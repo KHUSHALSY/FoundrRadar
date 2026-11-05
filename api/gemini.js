@@ -74,9 +74,9 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing prompt parameter' });
     }
 
-    // Use fast modern models with single retry
-    const primary = requestedModel || 'gemini-3.5-flash-lite';
-    const fallbackList = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-pro-latest'];
+    // Verified working models with fresh active quota
+    const primary = requestedModel || 'gemini-3-flash-preview';
+    const fallbackList = ['gemini-3-flash-preview', 'gemini-3.1-pro-preview', 'gemini-3.5-flash-lite'];
     const candidateModels = [primary, ...fallbackList.filter(m => m !== primary)];
 
     let lastError = null;
