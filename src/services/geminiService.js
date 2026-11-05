@@ -7,7 +7,7 @@
 const STORAGE_KEY_API_KEY = 'founderradar_gemini_api_key';
 const STORAGE_KEY_MODEL = 'founderradar_gemini_model';
 
-export const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
+export const DEFAULT_MODEL = 'gemini-2.5-pro';
 
 export function getStoredGeminiKey() {
   try {
@@ -41,6 +41,8 @@ export async function checkServerGeminiHealth() {
  * Universal Gemini request dispatcher
  */
 async function executeGeminiRequest({ prompt, model = DEFAULT_MODEL, generationConfig = {}, apiKey = '' }) {
+  let serverErrorMessage = '';
+
   // 1. Try secure serverless proxy first (which uses process.env.GEMINI_API_KEY on Vercel)
   try {
     const proxyRes = await fetch('/api/gemini', {
@@ -51,15 +53,20 @@ async function executeGeminiRequest({ prompt, model = DEFAULT_MODEL, generationC
 
     if (proxyRes.ok) {
       return await proxyRes.json();
+    } else {
+      const errJson = await proxyRes.json().catch(() => ({}));
+      serverErrorMessage = errJson?.error || `API returned HTTP ${proxyRes.status}`;
+      console.warn('Vercel Gemini API notice:', serverErrorMessage);
     }
   } catch (e) {
-    // Fall back to direct REST API
+    serverErrorMessage = e.message;
+    console.warn('Proxy fetch error:', e.message);
   }
 
-  // 2. Direct client fallback
+  // 2. Direct client fallback (if user provided a key in localStorage or env)
   const key = apiKey || getStoredGeminiKey();
   if (!key) {
-    throw new Error('GEMINI_API_KEY is not configured on the server.');
+    throw new Error(serverErrorMessage || 'Gemini API is temporarily unavailable. Please retry.');
   }
 
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key.trim()}`;
@@ -82,55 +89,75 @@ async function executeGeminiRequest({ prompt, model = DEFAULT_MODEL, generationC
 }
 
 /**
- * Searches and generates 20 to 25 verified, highly relevant real-world executives
+ * Robust JSON extraction helper for LLM responses
+ */
+function extractJsonArray(rawText) {
+  if (!rawText) return [];
+  // Strip code blocks
+  let clean = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+  
+  // Try direct parse
+  try {
+    const parsed = JSON.parse(clean);
+    if (Array.isArray(parsed)) return parsed;
+  } catch (e) {
+    // Try finding the first [ and last ]
+    const start = clean.indexOf('[');
+    const end = clean.lastIndexOf(']');
+    if (start !== -1 && end !== -1 && end > start) {
+      try {
+        const sliced = clean.slice(start, end + 1);
+        const parsed = JSON.parse(sliced);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (innerErr) {
+        console.warn('Regex JSON parse failed:', innerErr);
+      }
+    }
+  }
+  return [];
+}
+
+/**
+ * Searches and generates 15-20 verified, highly relevant real-world executives
  */
 export async function searchExecutivesWithAI(query, apiKey = '', model = DEFAULT_MODEL) {
-  const prompt = `You are an elite corporate intelligence and executive recruitment engine.
-The user wants to find real-world tech executives, founders, investors, or keynote speakers matching this exact search query:
-"${query}"
+  const prompt = `You are an elite corporate intelligence engine for foundrRadar.
+Find 15 real-world tech executives, founders, or investors strictly related to: "${query}".
 
-CRITICAL REQUIREMENTS:
-1. Return a JSON array of up to 20 real, verifiable, currently active executives or founders that strictly relate to the user's query.
-2. If the user mentions India, or by default, focus predominantly on Indian founders/executives from Bengaluru, Delhi NCR, Mumbai, Hyderabad, Chennai, Pune, etc.
-3. Every person must be a real, notable individual (do not invent fictional people).
-4. For each person, provide:
-- id: a unique slug like "ai-exec-1", "ai-exec-2", etc.
-- name: real full name
-- company: real current company or organization
-- domain: company web domain (e.g. "cred.club", "zerodha.com", "zomato.com", "zeptonow.com")
-- role: their real executive role / title
-- sector: primary industry sector
-- location: primary city and country (e.g. "Bengaluru, India" or "Mumbai, India")
-- email: realistic standard corporate email pattern or verified email (e.g. "first@company.com")
-- bio: 2 informative sentences summarizing their career highlights, scale of company, and background.
-- tags: array of 3-4 keywords (e.g. ["Founder", "FinTech", "IIT Alum"])
-- speakerTopics: array of 2-3 specific topics they speak about or advise on
-
-CRITICAL: Return ONLY a valid raw JSON array. Do not include markdown codeblocks (\`\`\`json) or any other commentary.`;
+RULES:
+1. Focus predominantly on Indian founders/executives from Bengaluru, Delhi NCR, Mumbai, Hyderabad, Pune, Chennai, etc.
+2. Return ONLY real, notable individuals (e.g. unicorn founders, VC partners, top startup operators).
+3. Return ONLY a valid JSON array of objects. Do not write any markdown code fences or conversational text.
+4. Each object must have these exact keys:
+   - "name": string (real full name)
+   - "company": string (real company)
+   - "domain": string (e.g. "zerodha.com", "cred.club", "razorpay.com", "zomato.com")
+   - "role": string (e.g. "Founder & CEO", "Co-Founder & CTO")
+   - "sector": string (e.g. "FinTech", "Quick Commerce", "EdTech", "AI & SaaS")
+   - "location": string (e.g. "Bengaluru, India", "Mumbai, India")
+   - "email": string (standard corporate email pattern)
+   - "bio": string (1-2 sentences summarizing their venture and achievements)
+   - "tags": array of 3 short keywords (e.g. ["FinTech", "Unicorn", "Angel"])
+   - "speakerTopics": array of 2 key discussion topics`;
 
   const data = await executeGeminiRequest({
     prompt,
     model,
-    generationConfig: { temperature: 0.2, topP: 0.8 },
+    generationConfig: { 
+      temperature: 0.2,
+      maxOutputTokens: 2500
+    },
     apiKey
   });
 
-  const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
-  const cleanJson = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
-  
-  let parsed = [];
-  try {
-    parsed = JSON.parse(cleanJson);
-  } catch (e) {
-    console.error('Failed to parse Gemini response as JSON:', rawText);
-    throw new Error('AI returned an invalid format. Please retry.');
+  const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const parsed = extractJsonArray(rawText);
+
+  if (!parsed || parsed.length === 0) {
+    throw new Error('AI returned an unparseable response. Please retry.');
   }
 
-  if (!Array.isArray(parsed)) {
-    throw new Error('Unexpected AI response format.');
-  }
-
-  // Hydrate with guaranteed bulletproof LinkedIn URLs
+  // Hydrate with bulletproof LinkedIn URLs
   return parsed.map((founder, idx) => ({
     ...founder,
     id: founder.id || `ai-${Date.now()}-${idx}`,

@@ -107,20 +107,28 @@ export default function SearchEngine({
     setCurrentPage(1);
     setIsSearchingAI(true);
     setAiSearchError('');
+    setAiFounders([]); // Clear stale results so user sees real-time search
 
     try {
-      // Trigger AI search to generate 20 targeted, relevant results
+      // Trigger AI search to generate 15-20 targeted, relevant results
       const results = await searchExecutivesWithAI(cleanTerm);
       if (results && results.length > 0) {
         setAiFounders(results);
+      } else {
+        setAiSearchError('No direct AI results found for this query');
       }
     } catch (err) {
       console.warn('AI search notice:', err.message);
-      setAiSearchError(err.message || 'AI search returned client fallback');
+      setAiSearchError(err.message || 'AI search notice: Showing verified directory matches.');
     } finally {
       setIsSearchingAI(false);
     }
   };
+
+  const STOP_WORDS = useMemo(() => new Set([
+    'in', 'for', 'at', 'the', 'a', 'an', 'of', 'and', 'to', 'with', 'on', 'from',
+    'founder', 'founders', 'ceo', 'cto', 'co-founder', 'top', 'best', 'who', 'is', 'are', 'find', 'show'
+  ]), []);
 
   // Combine AI results + Curated Indian directory matching the query
   const combinedFounders = useMemo(() => {
@@ -129,43 +137,40 @@ export default function SearchEngine({
       return CURATED_FOUNDERS;
     }
 
+    // If AI results were successfully returned, show them directly!
+    if (aiFounders && aiFounders.length > 0) {
+      return aiFounders;
+    }
+
+    // Otherwise, perform intelligent relevance matching on the curated directory
     const q = activeQuery.trim().toLowerCase();
-    const queryWords = q.split(/\s+/).filter(Boolean);
+    const allWords = q.split(/[\s,]+/).filter(Boolean);
+    const keywords = allWords.filter(w => !STOP_WORDS.has(w));
+    const searchTerms = keywords.length > 0 ? keywords : allWords;
 
-    // Matching local founders
-    const localMatches = CURATED_FOUNDERS.filter(f => {
-      return queryWords.some(w => 
-        f.name.toLowerCase().includes(w) ||
-        f.company.toLowerCase().includes(w) ||
-        f.sector.toLowerCase().includes(w) ||
-        f.location.toLowerCase().includes(w) ||
-        f.bio.toLowerCase().includes(w) ||
-        (f.tags && f.tags.some(t => t.toLowerCase().includes(w)))
-      );
+    const scored = CURATED_FOUNDERS.map(f => {
+      let score = 0;
+      const searchable = `${f.name} ${f.company} ${f.sector} ${f.location} ${f.bio} ${(f.tags || []).join(' ')}`.toLowerCase();
+      
+      // Exact full query match gets highest weight
+      if (searchable.includes(q)) score += 10;
+      
+      // Keyword matches
+      searchTerms.forEach(term => {
+        if (f.name.toLowerCase().includes(term)) score += 6;
+        if (f.company.toLowerCase().includes(term)) score += 5;
+        if (f.sector.toLowerCase().includes(term)) score += 4;
+        if (f.location.toLowerCase().includes(term)) score += 3;
+        if ((f.tags || []).some(t => t.toLowerCase().includes(term))) score += 3;
+        if (f.bio.toLowerCase().includes(term)) score += 2;
+      });
+
+      return { founder: f, score };
     });
 
-    // Merge AI results first, followed by matching local founders (de-duplicated by name)
-    const seenNames = new Set();
-    const merged = [];
-
-    aiFounders.forEach(f => {
-      const key = f.name.toLowerCase().trim();
-      if (!seenNames.has(key)) {
-        seenNames.add(key);
-        merged.push(f);
-      }
-    });
-
-    localMatches.forEach(f => {
-      const key = f.name.toLowerCase().trim();
-      if (!seenNames.has(key)) {
-        seenNames.add(key);
-        merged.push(f);
-      }
-    });
-
-    return merged.length > 0 ? merged : CURATED_FOUNDERS;
-  }, [activeQuery, aiFounders]);
+    const matches = scored.filter(item => item.score > 0).sort((a, b) => b.score - a.score).map(item => item.founder);
+    return matches.length > 0 ? matches : CURATED_FOUNDERS;
+  }, [activeQuery, aiFounders, STOP_WORDS]);
 
   // Pagination calculation (Strictly 5 per page)
   const totalResults = combinedFounders.length;
@@ -303,6 +308,22 @@ export default function SearchEngine({
           </div>
         )}
 
+        {/* AI Notice / Graceful Fallback banner */}
+        {aiSearchError && !isSearchingAI && (
+          <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl max-w-xl mx-auto text-xs text-amber-300 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+              <span className="text-left">{aiSearchError}. Showing relevant Indian ecosystem founders below.</span>
+            </div>
+            <button
+              onClick={() => handleExecuteSearch()}
+              className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 rounded text-[11px] font-bold shrink-0"
+            >
+              Retry AI
+            </button>
+          </div>
+        )}
+
       </div>
 
       {/* Results Header with Page Count */}
@@ -312,7 +333,7 @@ export default function SearchEngine({
             {activeQuery ? `Results for "${activeQuery}"` : 'Verified Executive Directory'}
           </h2>
           <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-mono font-semibold">
-            {totalResults} Found
+            {isSearchingAI ? 'Searching...' : `${totalResults} Found`}
           </span>
         </div>
 
@@ -322,41 +343,68 @@ export default function SearchEngine({
         </div>
       </div>
 
-      {/* 5 Results Stacked (Clean, High-Readability Card List) */}
-      <div className="space-y-4">
-        {currentFiveFounders.map((founder, index) => {
-          const domainFavicon = founder.domain 
-            ? `https://www.google.com/s2/favicons?domain=${founder.domain}&sz=64` 
-            : null;
-          const safeLinkedInUrl = getSafeLinkedInUrl(founder);
+      {/* 5 Results Stacked (Clean, High-Readability Card List or Skeleton Loading) */}
+      {isSearchingAI ? (
+        <div className="space-y-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="bg-[#10121a] border border-[#1e212f] rounded-2xl p-5 sm:p-6 animate-pulse space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-[#1b1e2c]" />
+                <div className="space-y-2 flex-1">
+                  <div className="h-4 bg-[#1b1e2c] rounded w-1/3" />
+                  <div className="h-3 bg-[#161824] rounded w-1/4" />
+                </div>
+              </div>
+              <div className="h-3 bg-[#161824] rounded w-full" />
+              <div className="h-3 bg-[#161824] rounded w-2/3" />
+            </div>
+          ))}
+        </div>
+      ) : currentFiveFounders.length === 0 ? (
+        <div className="bg-[#10121a] border border-[#1e212f] rounded-2xl p-12 text-center space-y-3">
+          <p className="text-slate-300 font-medium">No direct matches found for "{activeQuery}".</p>
+          <button 
+            onClick={() => { setSearchInput(''); setActiveQuery(''); setAiFounders([]); setCurrentPage(1); }}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl"
+          >
+            Reset Directory
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {currentFiveFounders.map((founder, index) => {
+            const domainFavicon = founder.domain 
+              ? `https://www.google.com/s2/favicons?domain=${founder.domain}&sz=64` 
+              : null;
+            const safeLinkedInUrl = getSafeLinkedInUrl(founder);
 
-          return (
-            <div 
-              key={founder.id}
-              style={{ animationDelay: `${index * 40}ms` }}
-              className="bg-[#10121a] border border-[#1e212f] rounded-2xl p-5 sm:p-6 card-hover animate-fade-in group shadow-md"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                
-                {/* Left Profile Info */}
-                <div className="flex items-start gap-3.5 flex-1">
-                  {/* Initials / Avatar */}
-                  <div className="w-12 h-12 rounded-2xl bg-[#161824] border border-[#262939] text-indigo-400 flex items-center justify-center font-bold text-base shrink-0 font-heading shadow-inner group-hover:border-indigo-500/40 transition-colors">
-                    {founder.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
-                  </div>
-
-                  <div className="space-y-1 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-bold text-white text-base sm:text-lg font-heading leading-snug">
-                        {founder.name}
-                      </h3>
-                      <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0" title="Verified Profile" />
-                      {founder.isAIGenerated && (
-                        <span className="px-2 py-0.5 rounded bg-purple-500/20 border border-purple-500/30 text-purple-300 text-[10px] font-bold font-mono">
-                          AI Verified
-                        </span>
-                      )}
+            return (
+              <div 
+                key={founder.id}
+                style={{ animationDelay: `${index * 40}ms` }}
+                className="bg-[#10121a] border border-[#1e212f] rounded-2xl p-5 sm:p-6 card-hover animate-fade-in group shadow-md"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                  
+                  {/* Left Profile Info */}
+                  <div className="flex items-start gap-3.5 flex-1">
+                    {/* Initials / Avatar */}
+                    <div className="w-12 h-12 rounded-2xl bg-[#161824] border border-[#262939] text-indigo-400 flex items-center justify-center font-bold text-base shrink-0 font-heading shadow-inner group-hover:border-indigo-500/40 transition-colors">
+                      {founder.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
                     </div>
+
+                    <div className="space-y-1 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-bold text-white text-base sm:text-lg font-heading leading-snug">
+                          {founder.name}
+                        </h3>
+                        <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0" title="Verified Profile" />
+                        {founder.isAIGenerated && (
+                          <span className="px-2 py-0.5 rounded bg-purple-500/20 border border-purple-500/30 text-purple-300 text-[10px] font-bold font-mono">
+                            AI Verified
+                          </span>
+                        )}
+                      </div>
 
                     {/* Company, Role & Favicon */}
                     <div className="flex items-center gap-2 flex-wrap text-xs">
@@ -458,6 +506,7 @@ export default function SearchEngine({
           );
         })}
       </div>
+      )}
 
       {/* Modern Swipe & Page Controls Bar (5 per page) */}
       {totalPages > 1 && (
