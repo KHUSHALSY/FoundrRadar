@@ -5,6 +5,33 @@
 
 export const OUTREACH_TEMPLATES = [
   {
+    id: "fireside-keynote",
+    name: "Fireside Chat / Keynote Proposal",
+    badge: "Event Keynote",
+    category: "Conference",
+    description: "Tailored fireside chat invitation with audience profiling and live Q&A setup.",
+    generate: (vars) => {
+      const founderFirstName = vars.founderName ? vars.founderName.split(" ")[0] : "there";
+      return {
+        subject: `[Fireside Chat] ${founderFirstName} x ${vars.organizationName || "Leadership Summit"}`,
+        body: `Hi ${founderFirstName},
+
+Hope you are having a productive week!
+
+On behalf of ${vars.organizationName || "our organizing team"}, I would love to invite you for an intimate 35-minute Fireside Chat on "${vars.topic || "Founding & Scaling"}" at our flagship summit on ${vars.eventDate || "upcoming date"}.
+
+Our audience includes ${vars.reach || "over 2,000+ founders, operators, and tech builders"}. We ensure complete white-glove speaker logistics and executive hospitality.
+
+Would love to align with your office on availability.
+
+Best,
+
+${vars.senderName || "[Your Name]"}`
+      };
+    }
+  },
+
+  {
     id: "advisory-request",
     name: "Executive Advisory Board Invitation",
     badge: "High Status",
