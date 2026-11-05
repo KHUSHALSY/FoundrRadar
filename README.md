@@ -215,6 +215,15 @@ Contributions are warmly welcomed! If you have ideas for additional search dorks
 
 ---
 
+
+## ❓ Frequently Asked Questions (FAQ)
+
+**Q: Does FounderRadar require paid LinkedIn Sales Navigator?**  
+A: No! FounderRadar bypasses commercial limits by leveraging clean Google indexing parameters and direct profile navigation.
+
+**Q: Are my outreach leads stored on an external cloud server?**  
+A: Never. All leads, notes, and pipeline statuses are stored 100% locally in your browser's `localStorage`.
+
 ## 📄 License
 
 Distributed under the MIT License. See `LICENSE` for more information.
