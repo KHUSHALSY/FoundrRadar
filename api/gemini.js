@@ -74,10 +74,11 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing prompt parameter' });
     }
 
-    // Try a list of fallback models in case the account has specific version access
-    const candidateModels = requestedModel 
-      ? [requestedModel, 'gemini-1.5-flash-latest', 'gemini-1.5-pro', 'gemini-pro', 'gemini-1.5-flash']
-      : ['gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'];
+    // Try modern valid models supported by Gemini API
+    const modernModels = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-pro', 'gemini-pro-latest', 'gemini-2.5-flash-lite'];
+    const candidateModels = requestedModel && modernModels.includes(requestedModel)
+      ? [requestedModel, ...modernModels.filter(m => m !== requestedModel)]
+      : modernModels;
 
     let lastError = null;
 
