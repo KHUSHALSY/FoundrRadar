@@ -39,7 +39,7 @@ export default function Navbar({ activeTab, setActiveTab, pipelineCount = 0, con
           </div>
 
           {/* Clean Minimalist Nav Tabs */}
-          <nav className="flex items-center gap-1">
+          <nav className="flex items-center gap-1" aria-label="Main Navigation">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
