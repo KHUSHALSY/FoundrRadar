@@ -32,6 +32,18 @@ export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch 
   const [selectedRole, setSelectedRole] = useState('All Roles');
   const [selectedLocation, setSelectedLocation] = useState('All');
   const [copiedKey, setCopiedKey] = useState(null);
+  const searchInputRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === '/' && document.activeElement !== searchInputRef.current && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Quick chips
   const popularKeywords = ['AI & LLMs', 'FinTech', 'D2C Brands', 'B2B SaaS', 'Solo Builders', 'Angel Investors'];
@@ -109,10 +121,11 @@ export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch 
         <div className="mt-5 relative">
           <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
           <input
-            type="text"
+            ref={searchInputRef}
+          type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by topic, industry, or company (e.g. AI, Fintech, D2C, boAt, Stripe, SaaS)..."
+            placeholder="Search founders by industry or company... (Press / to focus)"
             className="w-full pl-11 pr-4 py-3 bg-[#090a0f] border border-[#272a38] rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm shadow-inner"
           />
           {searchQuery && (
