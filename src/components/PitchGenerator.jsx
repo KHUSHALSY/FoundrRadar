@@ -2,33 +2,27 @@ import React, { useState, useEffect } from 'react';
 import { PenTool, Copy, Check, Mail, Building2, Globe, Sparkles, Loader2, ArrowUpRight } from 'lucide-react';
 import { OUTREACH_TEMPLATES } from '../data/outreachTemplates';
 import { getSafeLinkedInUrl } from '../utils/urlHelper';
-import { 
-  generatePersonalizedPitchWithAI, 
-  getStoredGeminiKey, 
-  getStoredGeminiModel 
-} from '../services/geminiService';
+import { generatePersonalizedPitchWithAI } from '../services/geminiService';
 
 export default function PitchGenerator({ 
   selectedFounder, 
-  pipeline = [],
-  hasGeminiKey = false,
-  onOpenGeminiModal
+  pipeline = []
 }) {
-  const [organizationName, setOrganizationName] = useState('Global Tech Summit');
-  const [initiativeName, setInitiativeName] = useState('Executive Innovation Conclave 2026');
-  const [topic, setTopic] = useState('Scaling AI Infrastructure & Category Moats');
+  const [organizationName, setOrganizationName] = useState('E-Cell Leadership Conclave');
+  const [initiativeName, setInitiativeName] = useState('Indian Founder Summit 2026');
+  const [topic, setTopic] = useState('Scaling Indian Consumer Brands & Tech Moats');
   const [eventDate, setEventDate] = useState('October 24, 2026');
-  const [eventMode, setEventMode] = useState('In-person Executive Ballroom & Global Broadcast');
-  const [reach, setReach] = useState('2,500+ attendees including 400+ founders and senior executives');
+  const [eventMode, setEventMode] = useState('Main Auditorium & Live National Broadcast');
+  const [reach, setReach] = useState('3,000+ attendees including 500+ founders and corporate operators');
 
   const [founderName, setFounderName] = useState('Aman Gupta');
   const [company, setCompany] = useState('boAt Lifestyle');
 
   const [senderName, setSenderName] = useState('Aarav Mehta');
-  const [senderTitle, setSenderTitle] = useState('Head of Partnerships & Speaker Relations');
-  const [senderPhone, setSenderPhone] = useState('+1 (555) 234-5678');
-  const [senderEmail, setSenderEmail] = useState('alliances@globalsummit.io');
-  const [website, setWebsite] = useState('https://globalsummit.io');
+  const [senderTitle, setSenderTitle] = useState('Head of Speaker Relations & Corporate Alliances');
+  const [senderPhone, setSenderPhone] = useState('+91 98765 43210');
+  const [senderEmail, setSenderEmail] = useState('alliances@foundrradar.io');
+  const [website, setWebsite] = useState('https://github.com/KHUSHALSY/FoundrRadar');
 
   const [activeTemplateId, setActiveTemplateId] = useState('linkedin-connect');
   const [copiedKey, setCopiedKey] = useState(null);
@@ -80,17 +74,9 @@ export default function PitchGenerator({
   };
 
   const handleGenerateAIPitch = async () => {
-    if (!hasGeminiKey) {
-      onOpenGeminiModal();
-      return;
-    }
-
     setIsGeneratingAI(true);
     setAiPitchError('');
     try {
-      const apiKey = getStoredGeminiKey();
-      const model = getStoredGeminiModel();
-
       const founderObj = selectedFounder || {
         name: founderName,
         company: company,
@@ -117,15 +103,13 @@ export default function PitchGenerator({
           senderPhone,
           website
         },
-        templateType: activeTemplateId,
-        apiKey,
-        model
+        templateType: activeTemplateId
       });
 
       setAiCustomPitch(result);
       setViewMode('ai');
     } catch (err) {
-      setAiPitchError(err.message || 'Failed to generate AI pitch');
+      setAiPitchError(err.message || 'Failed to generate custom pitch');
     } finally {
       setIsGeneratingAI(false);
     }
@@ -135,18 +119,18 @@ export default function PitchGenerator({
     <div className="space-y-6 max-w-6xl mx-auto">
       
       {/* Header */}
-      <div className="bg-[#111218] border border-[#202330] rounded-2xl p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-[#10121a] border border-[#1e212f] rounded-2xl p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight font-heading">
               High-Conversion Message Crafter
             </h1>
-            <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[10px] text-indigo-400 font-semibold">
+            <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[10px] text-indigo-400 font-semibold font-mono">
               8 Battle-Tested Formats
             </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Personalized psychological outreach templates engineered for 80%+ response rates.
+            Psychological cold outreach engineered specifically for Indian founders, judges, and keynote speakers.
           </p>
         </div>
 
@@ -159,12 +143,12 @@ export default function PitchGenerator({
           {isGeneratingAI ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Generating with Gemini Pro...</span>
+              <span>Generating Custom Pitch...</span>
             </>
           ) : (
             <>
               <Sparkles className="w-4 h-4 text-amber-300" />
-              <span>{hasGeminiKey ? 'Craft Custom Pitch with Gemini Pro' : 'Enable Gemini Pro AI Pitch'}</span>
+              <span>AI Custom Pitch (Tailored to {founderName})</span>
             </>
           )}
         </button>
@@ -174,10 +158,10 @@ export default function PitchGenerator({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Left Inputs (5 cols) */}
-        <div className="lg:col-span-5 bg-[#111218] border border-[#202330] rounded-2xl p-5 space-y-4 text-xs">
-          <div className="flex items-center justify-between border-b border-[#1c1e28] pb-3">
-            <span className="font-bold text-white uppercase tracking-wider text-[11px]">
-              Campaign & Target Context
+        <div className="lg:col-span-5 bg-[#10121a] border border-[#1e212f] rounded-2xl p-5 space-y-4 text-xs shadow-md">
+          <div className="flex items-center justify-between border-b border-[#181a26] pb-3">
+            <span className="font-bold text-white uppercase tracking-wider text-[11px] font-heading">
+              Event & Target Context
             </span>
             {selectedFounder && (
               <span className="text-emerald-400 font-medium text-[11px] flex items-center gap-1">
@@ -190,7 +174,7 @@ export default function PitchGenerator({
           {/* Quick Select from Pipeline */}
           {pipeline.length > 0 && (
             <div>
-              <label className="text-slate-400 block mb-1">Load from Pipeline CRM</label>
+              <label className="text-slate-400 block mb-1 font-medium">Load from Pipeline CRM</label>
               <select
                 onChange={(e) => {
                   const found = pipeline.find(p => p.id === e.target.value);
@@ -201,7 +185,7 @@ export default function PitchGenerator({
                     setViewMode('template');
                   }
                 }}
-                className="w-full px-2.5 py-1.5 bg-[#090a0f] border border-[#272a38] rounded-lg text-slate-200"
+                className="w-full px-2.5 py-1.5 bg-[#07080c] border border-[#26293a] rounded-lg text-slate-200 text-xs"
               >
                 <option value="">-- Choose lead from your CRM --</option>
                 {pipeline.map(p => (
@@ -214,21 +198,21 @@ export default function PitchGenerator({
           {/* Target Executive */}
           <div className="grid grid-cols-2 gap-2.5">
             <div>
-              <label className="text-slate-400 block mb-1">Executive Name</label>
+              <label className="text-slate-400 block mb-1 font-medium">Executive Name</label>
               <input
                 type="text"
                 value={founderName}
                 onChange={(e) => setFounderName(e.target.value)}
-                className="w-full px-2.5 py-1.5 bg-[#090a0f] border border-[#272a38] rounded-lg text-white"
+                className="w-full px-2.5 py-1.5 bg-[#07080c] border border-[#26293a] rounded-lg text-white"
               />
             </div>
             <div>
-              <label className="text-slate-400 block mb-1">Company / Firm</label>
+              <label className="text-slate-400 block mb-1 font-medium">Company / Venture</label>
               <input
                 type="text"
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
-                className="w-full px-2.5 py-1.5 bg-[#090a0f] border border-[#272a38] rounded-lg text-white"
+                className="w-full px-2.5 py-1.5 bg-[#07080c] border border-[#26293a] rounded-lg text-white"
               />
             </div>
           </div>
@@ -236,82 +220,82 @@ export default function PitchGenerator({
           {/* Organization & Initiative */}
           <div className="grid grid-cols-2 gap-2.5">
             <div>
-              <label className="text-slate-400 block mb-1">Host Organization</label>
+              <label className="text-slate-400 block mb-1 font-medium">Host Organization / E-Cell</label>
               <input
                 type="text"
                 value={organizationName}
                 onChange={(e) => setOrganizationName(e.target.value)}
-                className="w-full px-2.5 py-1.5 bg-[#090a0f] border border-[#272a38] rounded-lg text-white"
+                className="w-full px-2.5 py-1.5 bg-[#07080c] border border-[#26293a] rounded-lg text-white"
               />
             </div>
             <div>
-              <label className="text-slate-400 block mb-1">Event / Conclave Name</label>
+              <label className="text-slate-400 block mb-1 font-medium">Event / Conclave Name</label>
               <input
                 type="text"
                 value={initiativeName}
                 onChange={(e) => setInitiativeName(e.target.value)}
-                className="w-full px-2.5 py-1.5 bg-[#090a0f] border border-[#272a38] rounded-lg text-white"
+                className="w-full px-2.5 py-1.5 bg-[#07080c] border border-[#26293a] rounded-lg text-white"
               />
             </div>
           </div>
 
           <div>
-            <label className="text-slate-400 block mb-1">Pitch / Discussion Focus</label>
+            <label className="text-slate-400 block mb-1 font-medium">Pitch / Keynote Focus</label>
             <input
               type="text"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              className="w-full px-2.5 py-1.5 bg-[#090a0f] border border-[#272a38] rounded-lg text-white"
+              className="w-full px-2.5 py-1.5 bg-[#07080c] border border-[#26293a] rounded-lg text-white"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-2.5">
             <div>
-              <label className="text-slate-400 block mb-1">Date / Timeline</label>
+              <label className="text-slate-400 block mb-1 font-medium">Date / Timeline</label>
               <input
                 type="text"
                 value={eventDate}
                 onChange={(e) => setEventDate(e.target.value)}
-                className="w-full px-2.5 py-1.5 bg-[#090a0f] border border-[#272a38] rounded-lg text-white"
+                className="w-full px-2.5 py-1.5 bg-[#07080c] border border-[#26293a] rounded-lg text-white"
               />
             </div>
             <div>
-              <label className="text-slate-400 block mb-1">Format / Venue</label>
+              <label className="text-slate-400 block mb-1 font-medium">Format / Venue</label>
               <input
                 type="text"
                 value={eventMode}
                 onChange={(e) => setEventMode(e.target.value)}
-                className="w-full px-2.5 py-1.5 bg-[#090a0f] border border-[#272a38] rounded-lg text-white"
+                className="w-full px-2.5 py-1.5 bg-[#07080c] border border-[#26293a] rounded-lg text-white"
               />
             </div>
           </div>
 
           <div>
-            <label className="text-slate-400 block mb-1">Audience Reach / Scale</label>
+            <label className="text-slate-400 block mb-1 font-medium">Audience Scale</label>
             <input
               type="text"
               value={reach}
               onChange={(e) => setReach(e.target.value)}
-              className="w-full px-2.5 py-1.5 bg-[#090a0f] border border-[#272a38] rounded-lg text-white"
+              className="w-full px-2.5 py-1.5 bg-[#07080c] border border-[#26293a] rounded-lg text-white"
             />
           </div>
 
-          <div className="pt-2 border-t border-[#1c1e28]">
-            <span className="text-[10px] uppercase font-bold text-slate-500 block mb-2">Sender Signature:</span>
+          <div className="pt-2 border-t border-[#181a26]">
+            <span className="text-[10px] uppercase font-bold text-slate-500 block mb-2 font-mono">Sender Signature:</span>
             <div className="grid grid-cols-2 gap-2 mb-2">
               <input
                 type="text"
                 value={senderName}
                 onChange={(e) => setSenderName(e.target.value)}
                 placeholder="Name"
-                className="px-2 py-1.5 bg-[#090a0f] border border-[#272a38] rounded text-white"
+                className="px-2 py-1.5 bg-[#07080c] border border-[#26293a] rounded text-white"
               />
               <input
                 type="text"
                 value={senderTitle}
                 onChange={(e) => setSenderTitle(e.target.value)}
                 placeholder="Title"
-                className="px-2 py-1.5 bg-[#090a0f] border border-[#272a38] rounded text-white"
+                className="px-2 py-1.5 bg-[#07080c] border border-[#26293a] rounded text-white"
               />
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -320,14 +304,14 @@ export default function PitchGenerator({
                 value={senderEmail}
                 onChange={(e) => setSenderEmail(e.target.value)}
                 placeholder="Email"
-                className="px-2 py-1.5 bg-[#090a0f] border border-[#272a38] rounded text-white"
+                className="px-2 py-1.5 bg-[#07080c] border border-[#26293a] rounded text-white"
               />
               <input
                 type="text"
                 value={senderPhone}
                 onChange={(e) => setSenderPhone(e.target.value)}
                 placeholder="Phone"
-                className="px-2 py-1.5 bg-[#090a0f] border border-[#272a38] rounded text-white"
+                className="px-2 py-1.5 bg-[#07080c] border border-[#26293a] rounded text-white"
               />
             </div>
           </div>
@@ -338,7 +322,7 @@ export default function PitchGenerator({
           
           {/* Format Tabs & Mode Switcher */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="flex flex-wrap gap-1.5 bg-[#111218] border border-[#232634] p-1.5 rounded-xl">
+            <div className="flex flex-wrap gap-1.5 bg-[#10121a] border border-[#1e212f] p-1.5 rounded-xl">
               {OUTREACH_TEMPLATES.map((tmpl) => {
                 const isActive = tmpl.id === activeTemplateId;
                 return (
@@ -348,10 +332,10 @@ export default function PitchGenerator({
                       setActiveTemplateId(tmpl.id);
                       setViewMode('template');
                     }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                       isActive
                         ? 'bg-indigo-600 text-white shadow-sm'
-                        : 'text-slate-400 hover:text-white hover:bg-[#1a1c26]'
+                        : 'text-slate-400 hover:text-white hover:bg-[#161824]'
                     }`}
                   >
                     {tmpl.name}
@@ -362,11 +346,11 @@ export default function PitchGenerator({
 
             {/* View Mode Switcher if AI draft exists */}
             {aiCustomPitch && (
-              <div className="flex items-center gap-1 bg-[#111218] border border-[#232634] p-1 rounded-xl text-xs">
+              <div className="flex items-center gap-1 bg-[#10121a] border border-[#1e212f] p-1 rounded-xl text-xs">
                 <button
                   onClick={() => setViewMode('template')}
                   className={`px-2.5 py-1 rounded-lg font-medium transition-colors ${
-                    viewMode === 'template' ? 'bg-[#1e202b] text-white' : 'text-slate-400 hover:text-slate-200'
+                    viewMode === 'template' ? 'bg-[#181a26] text-white' : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
                   Template
@@ -378,7 +362,7 @@ export default function PitchGenerator({
                   }`}
                 >
                   <Sparkles className="w-3 h-3 text-amber-300" />
-                  <span>Gemini Draft</span>
+                  <span>AI Pitch</span>
                 </button>
               </div>
             )}
@@ -393,21 +377,21 @@ export default function PitchGenerator({
           )}
 
           {/* Output Card */}
-          <div className="bg-[#111218] border border-[#232634] rounded-2xl p-5 space-y-4 shadow-lg">
+          <div className="bg-[#10121a] border border-[#1e212f] rounded-2xl p-5 space-y-4 shadow-xl">
             
             {/* Output Header */}
-            <div className="flex items-center justify-between border-b border-[#1c1e28] pb-3">
+            <div className="flex items-center justify-between border-b border-[#181a26] pb-3">
               <div>
-                <h4 className="font-bold text-white text-sm flex items-center gap-2">
-                  <span>{viewMode === 'ai' ? 'Gemini Pro Personalized Pitch' : currentTemplate.name}</span>
+                <h4 className="font-bold text-white text-sm flex items-center gap-2 font-heading">
+                  <span>{viewMode === 'ai' ? 'AI Tailored Pitch' : currentTemplate.name}</span>
                   {viewMode === 'ai' && (
-                    <span className="px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 text-[10px] font-bold">
-                      PRO AI
+                    <span className="px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 text-[10px] font-bold font-mono">
+                      AI GENERATED
                     </span>
                   )}
                 </h4>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  {viewMode === 'ai' ? `Tailored specifically for ${founderName} at ${company}` : currentTemplate.description}
+                  {viewMode === 'ai' ? `Engineered specifically for ${founderName} (${company})` : currentTemplate.description}
                 </p>
               </div>
 
@@ -429,7 +413,7 @@ export default function PitchGenerator({
                   value={aiCustomPitch}
                   onChange={(e) => setAiCustomPitch(e.target.value)}
                   rows={8}
-                  className="w-full p-3.5 bg-[#090a0f] rounded-xl border border-[#272a38] text-xs text-slate-100 font-sans leading-relaxed focus:outline-none focus:border-indigo-500"
+                  className="w-full p-3.5 bg-[#07080c] rounded-xl border border-[#26293a] text-xs text-slate-100 font-sans leading-relaxed focus:outline-none focus:border-indigo-500"
                 />
                 
                 <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
@@ -437,7 +421,7 @@ export default function PitchGenerator({
                     href={getSafeLinkedInUrl({ name: founderName, company })}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#171922] hover:bg-[#232634] text-slate-200 border border-[#272a38] rounded-lg text-xs font-semibold transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#161824] hover:bg-[#202334] text-slate-200 border border-[#26293a] rounded-lg text-xs font-semibold transition-colors"
                   >
                     <span>Connect with {founderName} on LinkedIn</span>
                     <ArrowUpRight className="w-3.5 h-3.5" />
@@ -459,13 +443,13 @@ export default function PitchGenerator({
                     <span>Subject Line:</span>
                     <button
                       onClick={() => copyToClipboard(generatedContent.subject, 'subj')}
-                      className="text-indigo-400 hover:text-indigo-300 text-xs flex items-center gap-1"
+                      className="text-indigo-400 hover:text-indigo-300 text-xs flex items-center gap-1 font-medium"
                     >
                       {copiedKey === 'subj' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                       <span>{copiedKey === 'subj' ? 'Copied' : 'Copy Subject'}</span>
                     </button>
                   </div>
-                  <div className="p-2.5 bg-[#090a0f] rounded-lg border border-[#272a38] text-xs text-white font-mono select-all">
+                  <div className="p-2.5 bg-[#07080c] rounded-lg border border-[#26293a] text-xs text-white font-mono select-all">
                     {generatedContent.subject}
                   </div>
                 </div>
@@ -475,13 +459,13 @@ export default function PitchGenerator({
                     <span>Email Body:</span>
                     <button
                       onClick={() => copyToClipboard(generatedContent.body, 'body')}
-                      className="text-indigo-400 hover:text-indigo-300 text-xs flex items-center gap-1"
+                      className="text-indigo-400 hover:text-indigo-300 text-xs flex items-center gap-1 font-medium"
                     >
                       {copiedKey === 'body' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                       <span>{copiedKey === 'body' ? 'Copied' : 'Copy Body'}</span>
                     </button>
                   </div>
-                  <pre className="p-3.5 bg-[#090a0f] rounded-lg border border-[#272a38] text-xs text-slate-200 font-sans whitespace-pre-wrap leading-relaxed select-all max-h-80 overflow-y-auto">
+                  <pre className="p-3.5 bg-[#07080c] rounded-lg border border-[#26293a] text-xs text-slate-200 font-sans whitespace-pre-wrap leading-relaxed select-all max-h-80 overflow-y-auto">
                     {generatedContent.body}
                   </pre>
                 </div>
@@ -491,7 +475,7 @@ export default function PitchGenerator({
                     href={getSafeLinkedInUrl({ name: founderName, company })}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#171922] hover:bg-[#232634] text-slate-200 border border-[#272a38] rounded-lg text-xs font-semibold transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#161824] hover:bg-[#202334] text-slate-200 border border-[#26293a] rounded-lg text-xs font-semibold transition-colors"
                   >
                     <span>Connect on LinkedIn</span>
                     <ArrowUpRight className="w-3.5 h-3.5" />
@@ -508,7 +492,7 @@ export default function PitchGenerator({
               </div>
             ) : (
               <div className="space-y-4">
-                <pre className="p-3.5 bg-[#090a0f] rounded-lg border border-[#272a38] text-xs text-slate-200 font-sans whitespace-pre-wrap leading-relaxed select-all">
+                <pre className="p-3.5 bg-[#07080c] rounded-lg border border-[#26293a] text-xs text-slate-200 font-sans whitespace-pre-wrap leading-relaxed select-all">
                   {generatedContent}
                 </pre>
                 <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
@@ -516,7 +500,7 @@ export default function PitchGenerator({
                     href={getSafeLinkedInUrl({ name: founderName, company })}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#171922] hover:bg-[#232634] text-slate-200 border border-[#272a38] rounded-lg text-xs font-semibold transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#161824] hover:bg-[#202334] text-slate-200 border border-[#26293a] rounded-lg text-xs font-semibold transition-colors"
                   >
                     <span>Connect on LinkedIn</span>
                     <ArrowUpRight className="w-3.5 h-3.5" />

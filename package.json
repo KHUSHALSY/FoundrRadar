@@ -1,9 +1,9 @@
 {
-  "name": "founderradar",
+  "name": "foundrradar",
   "private": true,
-  "version": "1.1.1",
+  "version": "1.2.0",
   "type": "module",
-  "description": "Universal Multi-Platform Executive Outreach & Intelligence Engine",
+  "description": "foundrRadar — India's Executive Outreach & Founder Intelligence Engine",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

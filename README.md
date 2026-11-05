@@ -1,19 +1,19 @@
 <div align="center">
 
-# 🧭 FounderRadar Pro
-### The Universal Multi-Platform Executive Outreach & Intelligence Engine
+# 🧭 foundrRadar
+### India's Executive Outreach & Founder Intelligence Engine
 
-[![Version: 1.1.0](https://img.shields.io/badge/version-1.1.0-indigo.svg)](https://github.com/KHUSHALSY/FoundrRadar/releases)
+[![Version: 1.2.0](https://img.shields.io/badge/version-1.2.0-indigo.svg)](https://github.com/KHUSHALSY/FoundrRadar/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![React 19](https://img.shields.io/badge/React-19.0-61dafb.svg)](https://react.dev)
 [![Vite 8](https://img.shields.io/badge/Vite-8.0-646cff.svg)](https://vitejs.dev)
 [![Tailwind CSS v4](https://img.shields.io/badge/TailwindCSS-v4.0-38bdf8.svg)](https://tailwindcss.com)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 
-**Stop burning hours on manual prospect hunting, hitting LinkedIn commercial search limits, or sending awkward cold emails that get ignored.**  
-FounderRadar Pro empowers founders, event directors, podcast hosts, operators, and business development leads to discover, verify, and initiate high-conversion outreach to top 1% executives in seconds.
+**Stop burning hundreds of manual hours hunting down founders, getting hit by LinkedIn search limits, or sending awkward cold emails that get ghosted.**  
+**foundrRadar** empowers college event organizers (E-Cells, Annual Fests), founders, podcast hosts, and business development leads to discover, verify, and initiate high-conversion outreach to top Indian unicorn founders, Shark Tank investors, and keynote speakers.
 
-[Live Demo](#-quick-start) • [Key Features](#-features) • [Installation](#-installation) • [Deployment](#-deployment) • [Architecture](#-architecture)
+[Live Demo](#-quick-start) • [Key Features](#-features) • [Installation](#-installation) • [Deployment](#-deployment)
 
 ---
 
@@ -21,13 +21,13 @@ FounderRadar Pro empowers founders, event directors, podcast hosts, operators, a
 
 ## 📌 The Problem It Solves
 
-Modern outbound outreach is fundamentally broken:
-1. **LinkedIn's Commercial Search Limits**: Free users get throttled after 30 searches a month, hiding profile URLs and names behind paid Sales Navigator paywalls.
-2. **Fragmented Executive Presences**: The best founders, investors, and engineers aren't just on LinkedIn—they are actively discussing ideas on **𝕏 (Twitter)**, participating in **Reddit** AMAs, launching on **Product Hunt**, or building in public on **GitHub**.
-3. **Low-Conversion Cold Pitching**: Generic, salesy templates trigger spam filters and get rejected by executive assistants and Chiefs of Staff.
-4. **Disorganized Tracking**: Teams juggle messy spreadsheets, lost links, and disjointed follow-up cadences.
+Every fest season and outreach campaign faces the same nightmare:
+1. **LinkedIn's Commercial Search Limits**: Free accounts get throttled after 30 searches a month, hiding founder profiles behind paywalls.
+2. **Broken Dead Links & 404s**: Outdated vanity URLs fail, returning "This page doesn't exist".
+3. **Low-Conversion Cold Outreach**: Generic templates get flagged as spam or ignored by Chiefs of Staff.
+4. **Messy Tracking**: Teams juggle corrupted spreadsheets and lost contact details.
 
-**FounderRadar Pro** unifies discovery, contact scraping, message drafting, and pipeline tracking into a single client-side platform.
+**foundrRadar** fixes this with a 100% verified Indian founder directory, guaranteed LinkedIn resolvers, battle-tested psychological message templates, and an in-browser Pipeline CRM.
 
 ---
 

@@ -64,7 +64,7 @@ export default function PipelineCRM({
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(pipeline, null, 2));
     const dlAnchor = document.createElement('a');
     dlAnchor.setAttribute("href", dataStr);
-    dlAnchor.setAttribute("download", `FounderRadar_Pipeline_${new Date().toISOString().slice(0, 10)}.json`);
+    dlAnchor.setAttribute("download", `foundrRadar_Pipeline_${new Date().toISOString().slice(0, 10)}.json`);
     document.body.appendChild(dlAnchor);
     dlAnchor.click();
     dlAnchor.remove();
@@ -89,7 +89,7 @@ export default function PipelineCRM({
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `FounderRadar_Pipeline_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `foundrRadar_Pipeline_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

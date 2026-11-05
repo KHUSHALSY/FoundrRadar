@@ -4,49 +4,46 @@ import {
   MapPin, Briefcase, Plus, Mail, MessageSquare, 
   CheckCircle2, ArrowUpRight, Sparkles, SlidersHorizontal,
   Share2, X, Building, Globe, Award, UserCheck, ChevronRight,
-  Loader2, RefreshCw
+  Loader2, ArrowRight
 } from 'lucide-react';
 import { CURATED_FOUNDERS } from '../data/curatedFounders';
 import { getSafeLinkedInUrl } from '../utils/urlHelper';
-import { searchExecutivesWithAI, getStoredGeminiKey, getStoredGeminiModel } from '../services/geminiService';
+import { searchExecutivesWithAI } from '../services/geminiService';
 
 export const SECTORS = [
-  'All',
-  'AI & Machine Learning',
-  'FinTech & Payments',
-  'D2C & Consumer',
-  'B2B SaaS',
-  'DeepTech & EV',
-  'Venture Capital & Angels',
-  'Creator Economy'
+  'All India Leaders',
+  'FinTech & Wealth',
+  'Quick Commerce & D2C',
+  'AI & DeepTech',
+  'B2B SaaS & DevTools',
+  'Shark Tank & Angels',
+  'Global Pioneers'
 ];
 
-export const ROLES = [
-  'All Roles',
-  'Founder / Co-Founder',
-  'CEO / President',
-  'Investor / Angel',
-  'Keynote Speaker',
-  'Solo Builder'
+export const HUBS = [
+  'All India Hubs',
+  'Bengaluru',
+  'Delhi NCR (Gurugram / Noida)',
+  'Mumbai',
+  'Chennai & South India',
+  'Global Pioneers'
 ];
 
 export default function SearchEngine({ 
   onAddToPipeline, 
-  onSelectFounderForPitch,
-  hasGeminiKey = false,
-  onOpenGeminiModal
+  onSelectFounderForPitch
 }) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSector, setSelectedSector] = useState('All');
-  const [selectedRole, setSelectedRole] = useState('All Roles');
-  const [selectedLocation, setSelectedLocation] = useState('All');
+  const [searchInput, setSearchInput] = useState('');
+  const [activeQuery, setActiveQuery] = useState('');
+  const [selectedSector, setSelectedSector] = useState('All India Leaders');
+  const [selectedHub, setSelectedHub] = useState('All India Hubs');
   const [sortBy, setSortBy] = useState('curated');
   const [copiedKey, setCopiedKey] = useState(null);
   const [selectedFounderModal, setSelectedFounderModal] = useState(null);
   const [modalCopied, setModalCopied] = useState(false);
   const searchInputRef = useRef(null);
 
-  // AI Live Search state
+  // AI live search state (seamless without key nagging)
   const [aiFounders, setAiFounders] = useState([]);
   const [isSearchingAI, setIsSearchingAI] = useState(false);
   const [aiSearchError, setAiSearchError] = useState('');
@@ -58,7 +55,8 @@ export default function SearchEngine({
         if (selectedFounderModal) {
           setSelectedFounderModal(null);
         } else {
-          setSearchQuery('');
+          setSearchInput('');
+          setActiveQuery('');
           searchInputRef.current?.blur();
         }
       }
@@ -71,30 +69,63 @@ export default function SearchEngine({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedFounderModal]);
 
-  // Combined founder pool (Curated + any AI-discovered founders)
+  // Combined pool
   const allFoundersPool = useMemo(() => {
     return [...aiFounders, ...CURATED_FOUNDERS];
   }, [aiFounders]);
 
-  // Quick chips for 1-click discovery
+  // Quick chips for Indian startup discovery
   const popularKeywords = [
-    { label: 'All Leaders', query: '' },
-    { label: 'AI & Frontier Models', query: 'AI' },
-    { label: 'FinTech & Rails', query: 'FinTech' },
-    { label: 'D2C Brands', query: 'D2C' },
-    { label: 'B2B SaaS', query: 'SaaS' },
-    { label: 'Shark Tank & Angels', query: 'Angel' },
-    { label: 'Y Combinator', query: 'Y Combinator' },
-    { label: 'Bengaluru / India', query: 'Bengaluru' },
-    { label: 'Silicon Valley', query: 'San Francisco' }
+    { label: '🇮🇳 All Indian Founders', query: '' },
+    { label: 'Bengaluru Hub', query: 'Bengaluru' },
+    { label: 'Delhi NCR', query: 'Gurugram' },
+    { label: 'Mumbai Unicorns', query: 'Mumbai' },
+    { label: 'FinTech (CRED / Zerodha / Razorpay)', query: 'FinTech' },
+    { label: 'Quick Commerce (Zepto / Blinkit)', query: 'Quick Commerce' },
+    { label: 'Shark Tank Sharks', query: 'Shark' },
+    { label: 'Bootstrapped Giants (Zoho / Zerodha)', query: 'Bootstrapped' },
+    { label: 'AI & DeepTech India', query: 'AI' }
   ];
 
-  // Multi-term reactive search & filter
+  // Execute explicit search
+  const handleExecuteSearch = async (overrideTerm) => {
+    const term = typeof overrideTerm === 'string' ? overrideTerm : searchInput;
+    setActiveQuery(term.trim());
+
+    // If user enters an unindexed niche or specific query, optionally trigger AI live search silently
+    if (term.trim()) {
+      const q = term.trim().toLowerCase();
+      const localMatches = CURATED_FOUNDERS.filter(f => 
+        f.name.toLowerCase().includes(q) || 
+        f.company.toLowerCase().includes(q) || 
+        f.sector.toLowerCase().includes(q)
+      );
+
+      // If very few local matches, automatically enrich via Gemini in the background
+      if (localMatches.length <= 1 && !isSearchingAI) {
+        setIsSearchingAI(true);
+        setAiSearchError('');
+        try {
+          const results = await searchExecutivesWithAI(term.trim());
+          if (results && results.length > 0) {
+            setAiFounders(prev => [...results, ...prev]);
+          }
+        } catch (err) {
+          // Silent fallback to local results without bothering the user
+          console.warn('AI search background note:', err.message);
+        } finally {
+          setIsSearchingAI(false);
+        }
+      }
+    }
+  };
+
+  // Filter logic
   const filteredFounders = useMemo(() => {
-    const rawTerms = searchQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const rawTerms = activeQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
 
     let list = allFoundersPool.filter(f => {
-      // 1. Keyword search (every word must match at least one property)
+      // 1. Keyword search (every term must match)
       const matchesSearch = rawTerms.length === 0 || rawTerms.every(term => {
         return (
           f.name.toLowerCase().includes(term) ||
@@ -110,30 +141,23 @@ export default function SearchEngine({
       });
 
       // 2. Sector match
-      const matchesSector = selectedSector === 'All' || 
-        (selectedSector === 'AI & Machine Learning' && (f.sector.includes('AI') || (f.tags && (f.tags.includes('AGI') || f.tags.includes('AI Safety'))))) ||
-        (selectedSector === 'FinTech & Payments' && (f.sector.includes('FinTech') || f.sector.includes('WealthTech') || f.sector.includes('Payment'))) ||
-        (selectedSector === 'D2C & Consumer' && (f.sector.includes('D2C') || f.sector.includes('Consumer') || f.sector.includes('Eyewear') || f.sector.includes('Personal Care'))) ||
-        (selectedSector === 'B2B SaaS' && (f.sector.includes('SaaS') || f.sector.includes('Developer') || f.sector.includes('Cloud'))) ||
-        (selectedSector === 'DeepTech & EV' && (f.sector.includes('CleanTech') || f.sector.includes('Robotics') || f.sector.includes('BioTech') || f.sector.includes('Cybersecurity') || f.sector.includes('EV'))) ||
-        (selectedSector === 'Venture Capital & Angels' && (f.sector.includes('Venture') || (f.tags && f.tags.some(t => t.includes('Angel') || t.includes('VC') || t.includes('Seed'))))) ||
-        (selectedSector === 'Creator Economy' && (f.sector.includes('Creator') || f.sector.includes('Media') || (f.tags && f.tags.includes('Creator Economy'))));
+      const matchesSector = selectedSector === 'All India Leaders' ||
+        (selectedSector === 'FinTech & Wealth' && (f.sector.includes('FinTech') || f.sector.includes('WealthTech') || f.sector.includes('Asset') || f.sector.includes('Payments'))) ||
+        (selectedSector === 'Quick Commerce & D2C' && (f.sector.includes('Quick Commerce') || f.sector.includes('D2C') || f.sector.includes('Eyewear') || f.sector.includes('Consumer'))) ||
+        (selectedSector === 'AI & DeepTech' && (f.sector.includes('AI') || f.sector.includes('CleanTech') || f.sector.includes('EV') || (f.tags && f.tags.includes('AGI')))) ||
+        (selectedSector === 'B2B SaaS & DevTools' && (f.sector.includes('SaaS') || f.sector.includes('Developer') || f.sector.includes('APIs'))) ||
+        (selectedSector === 'Shark Tank & Angels' && (f.tags && (f.tags.some(t => t.includes('Shark') || t.includes('Angel') || t.includes('Investor'))))) ||
+        (selectedSector === 'Global Pioneers' && f.sector.includes('Global'));
 
-      // 3. Role match
-      const matchesRole = selectedRole === 'All Roles' ||
-        (selectedRole === 'Founder / Co-Founder' && (f.role.includes('Founder') || f.role.includes('Co-Founder'))) ||
-        (selectedRole === 'CEO / President' && (f.role.includes('CEO') || f.role.includes('President'))) ||
-        (selectedRole === 'Investor / Angel' && ((f.tags && f.tags.some(t => t.includes('Angel') || t.includes('Investor') || t.includes('VC'))) || f.role.includes('Investor'))) ||
-        (selectedRole === 'Keynote Speaker' && ((f.tags && f.tags.includes('Keynote Speaker')) || (f.speakerTopics && f.speakerTopics.length > 0))) ||
-        (selectedRole === 'Solo Builder' && (f.tags && (f.tags.includes('Solo Founder') || f.tags.includes('Indie Hacker') || f.tags.includes('Bootstrapped'))));
+      // 3. Hub match
+      const matchesHub = selectedHub === 'All India Hubs' ||
+        (selectedHub === 'Bengaluru' && f.location.includes('Bengaluru')) ||
+        (selectedHub === 'Delhi NCR (Gurugram / Noida)' && (f.location.includes('Delhi') || f.location.includes('Gurugram') || f.location.includes('Noida'))) ||
+        (selectedHub === 'Mumbai' && f.location.includes('Mumbai')) ||
+        (selectedHub === 'Chennai & South India' && (f.location.includes('Chennai') || f.location.includes('Tenkasi') || f.location.includes('Bengaluru'))) ||
+        (selectedHub === 'Global Pioneers' && (f.location.includes('San Francisco') || f.location.includes('CA')));
 
-      // 4. Location match
-      const matchesLocation = selectedLocation === 'All' ||
-        (selectedLocation === 'India' && (f.location.includes('India') || f.location.includes('Bengaluru') || f.location.includes('Delhi') || f.location.includes('Mumbai') || f.location.includes('Chennai'))) ||
-        (selectedLocation === 'US' && (f.location.includes('CA') || f.location.includes('San Francisco') || f.location.includes('WA') || f.location.includes('US') || f.location.includes('Venice'))) ||
-        (selectedLocation === 'Remote' && (f.location.toLowerCase().includes('remote') || f.location.toLowerCase().includes('global')));
-
-      return matchesSearch && matchesSector && matchesRole && matchesLocation;
+      return matchesSearch && matchesSector && matchesHub;
     });
 
     // Sorting
@@ -144,21 +168,20 @@ export default function SearchEngine({
     }
 
     return list;
-  }, [searchQuery, selectedSector, selectedRole, selectedLocation, sortBy, allFoundersPool]);
+  }, [activeQuery, selectedSector, selectedHub, sortBy, allFoundersPool]);
 
-  // Sector counts for category tabs
+  // Sector counts
   const sectorCounts = useMemo(() => {
-    const counts = { All: allFoundersPool.length };
+    const counts = { 'All India Leaders': allFoundersPool.length };
     SECTORS.forEach(sec => {
-      if (sec === 'All') return;
+      if (sec === 'All India Leaders') return;
       counts[sec] = allFoundersPool.filter(f => {
-        if (sec === 'AI & Machine Learning') return f.sector.includes('AI') || (f.tags && f.tags.includes('AGI'));
-        if (sec === 'FinTech & Payments') return f.sector.includes('FinTech') || f.sector.includes('WealthTech') || f.sector.includes('Payment');
-        if (sec === 'D2C & Consumer') return f.sector.includes('D2C') || f.sector.includes('Consumer') || f.sector.includes('Eyewear');
-        if (sec === 'B2B SaaS') return f.sector.includes('SaaS') || f.sector.includes('Developer');
-        if (sec === 'DeepTech & EV') return f.sector.includes('CleanTech') || f.sector.includes('Robotics') || f.sector.includes('BioTech') || f.sector.includes('Cybersecurity') || f.sector.includes('EV');
-        if (sec === 'Venture Capital & Angels') return f.sector.includes('Venture') || (f.tags && f.tags.some(t => t.includes('Angel') || t.includes('VC')));
-        if (sec === 'Creator Economy') return f.sector.includes('Creator') || f.sector.includes('Media');
+        if (sec === 'FinTech & Wealth') return f.sector.includes('FinTech') || f.sector.includes('WealthTech') || f.sector.includes('Asset') || f.sector.includes('Payments');
+        if (sec === 'Quick Commerce & D2C') return f.sector.includes('Quick Commerce') || f.sector.includes('D2C') || f.sector.includes('Eyewear') || f.sector.includes('Consumer');
+        if (sec === 'AI & DeepTech') return f.sector.includes('AI') || f.sector.includes('CleanTech') || f.sector.includes('EV');
+        if (sec === 'B2B SaaS & DevTools') return f.sector.includes('SaaS') || f.sector.includes('Developer') || f.sector.includes('APIs');
+        if (sec === 'Shark Tank & Angels') return f.tags && f.tags.some(t => t.includes('Shark') || t.includes('Angel') || t.includes('Investor'));
+        if (sec === 'Global Pioneers') return f.sector.includes('Global');
         return false;
       }).length;
     });
@@ -172,189 +195,148 @@ export default function SearchEngine({
   };
 
   const copyModalCard = (founder) => {
-    const text = `Executive Briefing: ${founder.name} (${founder.company})\nRole: ${founder.role}\nSector: ${founder.sector}\nLocation: ${founder.location}\nLinkedIn: ${getSafeLinkedInUrl(founder)}\nEmail: ${founder.email || 'N/A'}\nKeynote Topics: ${founder.speakerTopics?.join(', ') || 'N/A'}`;
+    const text = `foundrRadar Briefing: ${founder.name} (${founder.company})\nRole: ${founder.role}\nSector: ${founder.sector}\nLocation: ${founder.location}\nLinkedIn: ${getSafeLinkedInUrl(founder)}\nEmail: ${founder.email || 'N/A'}\nKeynote Topics: ${founder.speakerTopics?.join(', ') || 'N/A'}`;
     navigator.clipboard.writeText(text);
     setModalCopied(true);
     setTimeout(() => setModalCopied(false), 2000);
   };
 
-  // Run AI live search with Gemini
-  const handleTriggerAISearch = async () => {
-    const query = searchQuery.trim();
-    if (!query) return;
-
-    if (!hasGeminiKey) {
-      onOpenGeminiModal();
-      return;
-    }
-
-    setIsSearchingAI(true);
-    setAiSearchError('');
-    try {
-      const apiKey = getStoredGeminiKey();
-      const model = getStoredGeminiModel();
-      const results = await searchExecutivesWithAI(query, apiKey, model);
-      setAiFounders(prev => [...results, ...prev]);
-    } catch (err) {
-      setAiSearchError(err.message || 'AI search failed');
-    } finally {
-      setIsSearchingAI(false);
-    }
-  };
-
-  // Safe external search fallback links
-  const customLinkedInSearchUrl = useMemo(() => {
-    const term = searchQuery.trim() || 'tech founder';
-    return `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(term + ' founder')}`;
-  }, [searchQuery]);
-
-  const customTwitterSearchUrl = useMemo(() => {
-    const term = searchQuery.trim() || 'tech';
-    return `https://x.com/search?q=${encodeURIComponent('founder ' + term)}&f=user`;
-  }, [searchQuery]);
-
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
       
-      {/* Executive Directory Stats Strip */}
+      {/* Indian Startup Ecosystem Stats Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-[#111218] border border-[#202330] rounded-xl p-3.5 flex items-center justify-between">
+        <div className="bg-[#10121a] border border-[#1e212f] rounded-xl p-3.5 flex items-center justify-between shadow-sm">
           <div>
-            <div className="text-[11px] text-slate-400 font-medium">Verified Executives</div>
-            <div className="text-lg font-bold text-white mt-0.5">{allFoundersPool.length} Leaders</div>
+            <div className="text-[11px] text-slate-400 font-medium">Indian Startup Leaders</div>
+            <div className="text-lg font-bold text-white mt-0.5 font-heading">{allFoundersPool.length} Verified</div>
           </div>
           <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs">
-            <UserCheck className="w-4 h-4" />
+            🇮🇳
           </div>
         </div>
 
-        <div className="bg-[#111218] border border-[#202330] rounded-xl p-3.5 flex items-center justify-between">
+        <div className="bg-[#10121a] border border-[#1e212f] rounded-xl p-3.5 flex items-center justify-between shadow-sm">
           <div>
             <div className="text-[11px] text-slate-400 font-medium">LinkedIn Verification</div>
-            <div className="text-lg font-bold text-emerald-400 mt-0.5">100% Direct</div>
+            <div className="text-lg font-bold text-emerald-400 mt-0.5 font-heading">100% Direct</div>
           </div>
           <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">
             <CheckCircle2 className="w-4 h-4" />
           </div>
         </div>
 
-        <div className="bg-[#111218] border border-[#202330] rounded-xl p-3.5 flex items-center justify-between">
+        <div className="bg-[#10121a] border border-[#1e212f] rounded-xl p-3.5 flex items-center justify-between shadow-sm">
           <div>
-            <div className="text-[11px] text-slate-400 font-medium">Indexed Inboxes</div>
-            <div className="text-lg font-bold text-amber-400 mt-0.5">{allFoundersPool.filter(f => f.email).length} Direct</div>
+            <div className="text-[11px] text-slate-400 font-medium">Founder Inboxes</div>
+            <div className="text-lg font-bold text-amber-400 mt-0.5 font-heading">{allFoundersPool.filter(f => f.email).length} Indexed</div>
           </div>
           <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs">
             <Mail className="w-4 h-4" />
           </div>
         </div>
 
-        <div className="bg-[#111218] border border-[#202330] rounded-xl p-3.5 flex items-center justify-between">
+        <div className="bg-[#10121a] border border-[#1e212f] rounded-xl p-3.5 flex items-center justify-between shadow-sm">
           <div>
-            <div className="text-[11px] text-slate-400 font-medium">AI Intelligence</div>
-            <div className="text-lg font-bold text-indigo-300 mt-0.5 flex items-center gap-1.5">
-              <span>{hasGeminiKey ? 'Gemini Pro' : 'Free Mode'}</span>
-            </div>
+            <div className="text-[11px] text-slate-400 font-medium">Outreach Accuracy</div>
+            <div className="text-lg font-bold text-slate-200 mt-0.5 font-heading">Zero 404s</div>
           </div>
-          <button 
-            onClick={onOpenGeminiModal}
-            className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:text-white flex items-center justify-center font-bold text-xs transition-colors"
-            title="Configure Gemini Pro"
-          >
-            <Sparkles className="w-4 h-4" />
-          </button>
+          <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 flex items-center justify-center font-bold text-xs">
+            <Sparkles className="w-4 h-4 text-indigo-400" />
+          </div>
         </div>
       </div>
 
-      {/* Main Search & Control Panel */}
-      <div className="bg-[#111218] border border-[#202330] rounded-2xl p-5 sm:p-7 shadow-lg">
+      {/* Main Search Bar & Filter Header */}
+      <div className="bg-[#10121a] border border-[#1e212f] rounded-2xl p-5 sm:p-7 shadow-xl">
         
-        {/* Header row */}
+        {/* Title */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                Executive & Founder Directory
+              <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight font-heading">
+                India Executive & Founder Directory
               </h1>
               <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-400 font-semibold">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 pulse-dot" />
-                Live Verified
+                Live Radar Active
               </span>
             </div>
             <p className="text-xs sm:text-sm text-slate-400 mt-1">
-              Connect directly with verified tech founders, investors, and keynote speakers. Tap "Connect" to open their real profile on LinkedIn with zero 404s.
+              Connect directly with India’s top unicorn founders, Shark Tank investors, and keynote speakers. Tap "Connect" to open verified profiles directly with zero dead links.
             </p>
           </div>
+        </div>
 
-          {/* AI Search Trigger Pill */}
-          {searchQuery.trim() && (
+        {/* Search Input Bar with EXPLICIT Right-Side Search Button */}
+        <div className="mt-5 relative flex items-center">
+          <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+          
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleExecuteSearch();
+              }
+            }}
+            placeholder="Search founders by name, company, sector, college alum (IIT/IIM/BITS), or speaking topic..."
+            className="w-full pl-11 pr-32 py-3.5 bg-[#07080c] border border-[#26293a] rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-xs sm:text-sm shadow-inner transition-all"
+          />
+
+          {/* Prominent Search Action Button on the Right */}
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+            {searchInput && (
+              <button
+                onClick={() => {
+                  setSearchInput('');
+                  setActiveQuery('');
+                }}
+                className="text-xs text-slate-500 hover:text-slate-300 px-1.5 py-1 rounded"
+              >
+                ✕
+              </button>
+            )}
+
             <button
-              onClick={handleTriggerAISearch}
+              onClick={() => handleExecuteSearch()}
               disabled={isSearchingAI}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-semibold shadow-md transition-all self-start sm:self-auto shrink-0"
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-semibold rounded-lg shadow-md transition-all shrink-0"
+              title="Execute Search in this page"
             >
               {isSearchingAI ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Searching with Gemini Pro...</span>
+                  <span className="hidden sm:inline">Searching...</span>
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                  <span>Search "{searchQuery.slice(0, 16)}..." with Gemini Pro</span>
+                  <span>Search</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </>
               )}
             </button>
-          )}
-        </div>
-
-        {/* Search Input Bar */}
-        <div className="mt-5 relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input
-            ref={searchInputRef}
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by executive name, company, sector, speaking topic, or alma mater... (Press / to focus)"
-            className="w-full pl-11 pr-24 py-3.5 bg-[#090a0f] border border-[#272a38] rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-sm shadow-inner transition-all"
-          />
-          <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-2">
-            {searchQuery ? (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="text-xs text-slate-400 hover:text-white px-2 py-1 rounded bg-[#171922] hover:bg-[#232634] transition-colors"
-              >
-                Clear
-              </button>
-            ) : (
-              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono text-slate-500 bg-[#171922] border border-[#272a38] rounded">
-                /
-              </kbd>
-            )}
           </div>
         </div>
 
-        {/* AI Error Notification if any */}
-        {aiSearchError && (
-          <div className="mt-3 p-2.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs flex items-center justify-between">
-            <span>{aiSearchError}</span>
-            <button onClick={() => setAiSearchError('')} className="text-red-400 hover:text-white">✕</button>
-          </div>
-        )}
-
-        {/* Quick Discovery Chips */}
+        {/* Quick Indian Ecosystem Filters */}
         <div className="mt-3.5 flex flex-wrap items-center gap-1.5">
-          <span className="text-[11px] text-slate-500 font-medium mr-1">Quick Picks:</span>
+          <span className="text-[11px] text-slate-500 font-medium mr-1">Ecosystem:</span>
           {popularKeywords.map((kw, i) => {
-            const isSelected = (kw.query === '' && searchQuery === '') || (kw.query !== '' && searchQuery.toLowerCase() === kw.query.toLowerCase());
+            const isSelected = (kw.query === '' && activeQuery === '') || (kw.query !== '' && activeQuery.toLowerCase() === kw.query.toLowerCase());
             return (
               <button
                 key={i}
-                onClick={() => setSearchQuery(kw.query)}
+                onClick={() => {
+                  setSearchInput(kw.query);
+                  handleExecuteSearch(kw.query);
+                }}
                 className={`text-xs px-2.5 py-1 rounded-lg border transition-all ${
                   isSelected
-                    ? 'bg-indigo-600 text-white border-indigo-500 font-medium shadow-sm'
-                    : 'bg-[#151720] text-slate-300 border-[#232634] hover:border-slate-600 hover:text-white'
+                    ? 'bg-indigo-600 text-white border-indigo-500 font-semibold shadow-sm'
+                    : 'bg-[#141620] text-slate-300 border-[#202332] hover:border-slate-500 hover:text-white'
                 }`}
               >
                 {kw.label}
@@ -364,7 +346,7 @@ export default function SearchEngine({
         </div>
 
         {/* Sector Tabs Bar with Counts */}
-        <div className="mt-5 pt-4 border-t border-[#1c1e28]">
+        <div className="mt-5 pt-4 border-t border-[#1a1d29]">
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
             {SECTORS.map(sec => {
               const isSelected = selectedSector === sec;
@@ -373,15 +355,15 @@ export default function SearchEngine({
                 <button
                   key={sec}
                   onClick={() => setSelectedSector(sec)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-medium ${
                     isSelected
-                      ? 'bg-[#1c1e2a] text-white border border-indigo-500/50 font-semibold shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-[#151720] border border-transparent'
+                      ? 'bg-[#181a26] text-white border border-indigo-500/50 font-semibold shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-[#12141e] border border-transparent'
                   }`}
                 >
                   <span>{sec}</span>
                   <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
-                    isSelected ? 'bg-indigo-600 text-white' : 'bg-[#181a24] text-slate-500'
+                    isSelected ? 'bg-indigo-600 text-white' : 'bg-[#1e212f] text-slate-400'
                   }`}>
                     {count}
                   </span>
@@ -391,54 +373,39 @@ export default function SearchEngine({
           </div>
         </div>
 
-        {/* Secondary Filters Bar */}
-        <div className="mt-4 pt-3 border-t border-[#1a1c26] flex flex-wrap items-center justify-between gap-3 text-xs">
+        {/* Hub & Secondary Controls */}
+        <div className="mt-4 pt-3 border-t border-[#181a26] flex flex-wrap items-center justify-between gap-3 text-xs">
           
           <div className="flex flex-wrap items-center gap-3">
-            {/* Role Filter */}
+            {/* Indian City Hub Filter */}
             <div className="flex items-center gap-1.5">
-              <span className="text-slate-500">Role:</span>
+              <span className="text-slate-400 font-medium">Indian Hub:</span>
               <select
-                value={selectedRole}
-                onChange={(e) => setSelectedRole(e.target.value)}
-                className="px-2.5 py-1.5 bg-[#090a0f] border border-[#272a38] rounded-lg text-slate-200 focus:outline-none focus:border-indigo-500 text-xs"
+                value={selectedHub}
+                onChange={(e) => setSelectedHub(e.target.value)}
+                className="px-2.5 py-1.5 bg-[#07080c] border border-[#26293a] rounded-lg text-slate-200 focus:outline-none focus:border-indigo-500 text-xs"
               >
-                {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
-            </div>
-
-            {/* Region Filter */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-slate-500">Region:</span>
-              <select
-                value={selectedLocation}
-                onChange={(e) => setSelectedLocation(e.target.value)}
-                className="px-2.5 py-1.5 bg-[#090a0f] border border-[#272a38] rounded-lg text-slate-200 focus:outline-none focus:border-indigo-500 text-xs"
-              >
-                <option value="All">All Locations</option>
-                <option value="India">India (Bengaluru / Delhi / Mumbai)</option>
-                <option value="US">Silicon Valley / United States</option>
-                <option value="Remote">Remote & Distributed</option>
+                {HUBS.map(h => <option key={h} value={h}>{h}</option>)}
               </select>
             </div>
 
             {/* Sort Dropdown */}
             <div className="flex items-center gap-1.5">
-              <span className="text-slate-500">Sort:</span>
+              <span className="text-slate-400 font-medium">Sort:</span>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="px-2.5 py-1.5 bg-[#090a0f] border border-[#272a38] rounded-lg text-slate-200 focus:outline-none focus:border-indigo-500 text-xs"
+                className="px-2.5 py-1.5 bg-[#07080c] border border-[#26293a] rounded-lg text-slate-200 focus:outline-none focus:border-indigo-500 text-xs"
               >
-                <option value="curated">Curated Priority</option>
+                <option value="curated">Indian Tier-1 Priority</option>
                 <option value="name-asc">Name (A-Z)</option>
                 <option value="company-asc">Company (A-Z)</option>
               </select>
             </div>
           </div>
 
-          <div className="text-xs text-slate-400">
-            Showing <span className="text-white font-bold">{filteredFounders.length}</span> of {allFoundersPool.length} leaders
+          <div className="text-xs text-slate-400 font-medium">
+            Showing <span className="text-white font-bold">{filteredFounders.length}</span> Indian & Global executives
           </div>
 
         </div>
@@ -448,15 +415,15 @@ export default function SearchEngine({
       {/* Results Header */}
       <div className="flex items-center justify-between px-1">
         <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-          <span>{searchQuery ? `Matching "${searchQuery}"` : `${selectedSector} Directory`}</span>
+          <span>{activeQuery ? `Results for "${activeQuery}"` : `${selectedSector}`}</span>
           <span className="text-indigo-400">({filteredFounders.length})</span>
         </h2>
         <span className="text-[11px] text-slate-500 hidden sm:inline-block">
-          Guaranteed 100% active LinkedIn profiles — zero 404 dead ends
+          Click "Connect" to open verified profiles directly in LinkedIn
         </span>
       </div>
 
-      {/* Profiles Grid with Stagger Animation */}
+      {/* Profiles Grid */}
       {filteredFounders.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredFounders.map((founder, index) => {
@@ -468,25 +435,25 @@ export default function SearchEngine({
             return (
               <div 
                 key={founder.id}
-                style={{ animationDelay: `${Math.min(index * 25, 300)}ms` }}
-                className="bg-[#111218] border border-[#202330] rounded-xl p-5 flex flex-col justify-between card-hover animate-fade-in group"
+                style={{ animationDelay: `${Math.min(index * 20, 250)}ms` }}
+                className="bg-[#10121a] border border-[#1e212f] rounded-xl p-5 flex flex-col justify-between card-hover animate-fade-in group"
               >
                 <div>
                   {/* Top Header: Initials + Company Favicon + Verification */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
                       {/* Initials Avatar */}
-                      <div className="w-11 h-11 rounded-xl bg-[#171924] border border-[#262939] text-indigo-400 flex items-center justify-center font-bold text-sm shrink-0 shadow-inner group-hover:border-indigo-500/40 transition-colors">
+                      <div className="w-11 h-11 rounded-xl bg-[#161824] border border-[#262939] text-indigo-400 flex items-center justify-center font-bold text-sm shrink-0 shadow-inner group-hover:border-indigo-500/40 transition-colors">
                         {founder.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
                       </div>
 
                       <div>
-                        <h3 className="font-bold text-white text-sm sm:text-base flex items-center gap-1.5 leading-snug">
+                        <h3 className="font-bold text-white text-sm sm:text-base flex items-center gap-1.5 leading-snug font-heading">
                           <span>{founder.name}</span>
-                          <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400 shrink-0" title="Direct LinkedIn Verified" />
+                          <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400 shrink-0" title="Verified Profile" />
                           {founder.isAIGenerated && (
                             <span className="px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 text-[9px] font-bold">
-                              AI
+                              AI Live
                             </span>
                           )}
                         </h3>
@@ -511,17 +478,17 @@ export default function SearchEngine({
 
                   {/* Location & Sector Pills */}
                   <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3 text-slate-500 shrink-0" />
+                    <span className="flex items-center gap-1 text-slate-300">
+                      <MapPin className="w-3 h-3 text-indigo-400 shrink-0" />
                       <span>{founder.location}</span>
                     </span>
                     <span className="text-slate-600">•</span>
-                    <span className="px-2 py-0.5 bg-[#171922] text-slate-300 rounded border border-[#232634] text-[10px]">
+                    <span className="px-2 py-0.5 bg-[#161824] text-slate-300 rounded border border-[#202332] text-[10px]">
                       {founder.sector}
                     </span>
                   </div>
 
-                  {/* Bio with subtle hover clamp */}
+                  {/* Bio */}
                   <p className="mt-3 text-xs text-slate-300 leading-relaxed line-clamp-2">
                     {founder.bio}
                   </p>
@@ -530,15 +497,15 @@ export default function SearchEngine({
                   {founder.speakerTopics && founder.speakerTopics.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-1.5">
                       {founder.speakerTopics.slice(0, 2).map((st, i) => (
-                        <span key={i} className="text-[10px] px-2 py-0.5 bg-[#090a0f] text-slate-400 rounded border border-[#1e202b]">
+                        <span key={i} className="text-[10px] px-2 py-0.5 bg-[#07080c] text-slate-400 rounded border border-[#1b1e2c]">
                           {st}
                         </span>
                       ))}
                     </div>
                   )}
 
-                  {/* Contact Channels (Email, 𝕏, Reddit, Details Modal) */}
-                  <div className="mt-4 pt-3 border-t border-[#1a1c26] flex items-center justify-between text-xs">
+                  {/* Contact Channels (Email, 𝕏, Details) */}
+                  <div className="mt-4 pt-3 border-t border-[#181a26] flex items-center justify-between text-xs">
                     {/* Copy Email Button */}
                     {founder.email ? (
                       <button
@@ -559,36 +526,25 @@ export default function SearchEngine({
                         )}
                       </button>
                     ) : (
-                      <span className="text-[11px] text-slate-500">LinkedIn Active</span>
+                      <span className="text-[11px] text-slate-500 font-mono">Verified Active</span>
                     )}
 
-                    {/* Social Handles & Quick View */}
+                    {/* Social Handles & Details Trigger */}
                     <div className="flex items-center gap-1.5">
                       {founder.twitter && (
                         <a
                           href={founder.twitter}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-slate-400 hover:text-white text-xs font-bold px-1.5 py-0.5 rounded bg-[#171922] hover:bg-[#232634] transition-colors"
-                          title="Open verified 𝕏 handle"
+                          className="text-slate-400 hover:text-white text-xs font-bold px-1.5 py-0.5 rounded bg-[#161824] hover:bg-[#202334] transition-colors"
+                          title="Open 𝕏 handle"
                         >
                           𝕏
                         </a>
                       )}
-                      {founder.reddit && (
-                        <a
-                          href={founder.reddit}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-slate-400 hover:text-orange-400 text-xs px-1.5 py-0.5 rounded bg-[#171922] hover:bg-[#232634] transition-colors"
-                          title="Reddit Community"
-                        >
-                          🤖
-                        </a>
-                      )}
                       <button
                         onClick={() => setSelectedFounderModal(founder)}
-                        className="text-[11px] text-indigo-400 hover:text-indigo-300 px-1.5 py-0.5 rounded bg-[#171922] hover:bg-[#232634] transition-colors font-medium"
+                        className="text-[11px] text-indigo-400 hover:text-indigo-300 px-2 py-0.5 rounded bg-[#161824] hover:bg-[#202334] transition-colors font-semibold"
                         title="Quick View Details"
                       >
                         Details
@@ -598,13 +554,13 @@ export default function SearchEngine({
 
                 </div>
 
-                {/* Bottom Actions: Draft Pitch, Save to Pipeline, Guaranteed Working Connect */}
-                <div className="mt-4 pt-3 border-t border-[#1c1e28] flex items-center justify-between gap-2">
+                {/* Bottom Actions: Draft Pitch, Save to Pipeline, Direct Clean Connect */}
+                <div className="mt-4 pt-3 border-t border-[#181a26] flex items-center justify-between gap-2">
                   
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => onSelectFounderForPitch(founder)}
-                      className="px-2.5 py-1.5 bg-[#171922] hover:bg-[#232634] text-slate-300 hover:text-white rounded-lg text-xs font-medium transition-colors"
+                      className="px-2.5 py-1.5 bg-[#161824] hover:bg-[#202334] text-slate-300 hover:text-white rounded-lg text-xs font-semibold transition-colors"
                     >
                       Draft Pitch
                     </button>
@@ -622,14 +578,14 @@ export default function SearchEngine({
                         status: 'Identified',
                         location: founder.location
                       })}
-                      className="px-2 py-1.5 bg-[#171922] hover:bg-[#232634] text-slate-400 hover:text-slate-200 rounded-lg text-xs transition-colors"
+                      className="px-2 py-1.5 bg-[#161824] hover:bg-[#202334] text-slate-400 hover:text-slate-200 rounded-lg text-xs transition-colors"
                       title="Add to Pipeline CRM"
                     >
                       <Plus className="w-3.5 h-3.5" />
                     </button>
                   </div>
 
-                  {/* THE MAIN ACTION: Bulletproof LinkedIn Connect with Zero 404s */}
+                  {/* Guaranteed Direct LinkedIn Button */}
                   <a
                     href={safeLinkedInUrl}
                     target="_blank"
@@ -648,49 +604,40 @@ export default function SearchEngine({
           })}
         </div>
       ) : (
-        /* Empty / Custom Query Fallback Card with Direct Live Links */
-        <div className="bg-[#111218] border border-[#232634] rounded-2xl p-8 text-center max-w-xl mx-auto space-y-4 animate-fade-in shadow-xl">
+        /* Empty / Custom Query Fallback */
+        <div className="bg-[#10121a] border border-[#1e212f] rounded-2xl p-8 text-center max-w-xl mx-auto space-y-4 animate-fade-in shadow-xl">
           <div className="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-400 mx-auto flex items-center justify-center">
             <Search className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-white">
-              No Local Match for "{searchQuery}"
+            <h3 className="text-base font-bold text-white font-heading">
+              No Local Profile for "{activeQuery}"
             </h3>
             <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
-              You can instantly search across live global directories with Gemini Pro, or jump straight to live results on LinkedIn or 𝕏 with one click below:
+              You can search directly across the live Indian ecosystem on LinkedIn or 𝕏 with one click below:
             </p>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-            <button
-              onClick={handleTriggerAISearch}
-              disabled={isSearchingAI}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl text-xs font-semibold shadow-md transition-all"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>{isSearchingAI ? 'Finding with Gemini...' : 'Search with Gemini Pro'}</span>
-            </button>
-
             <a
-              href={customLinkedInSearchUrl}
+              href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(activeQuery + ' founder India')}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#171922] hover:bg-[#232634] text-slate-200 border border-[#272a38] rounded-xl text-xs font-semibold shadow-md transition-all"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-md transition-all"
             >
-              <span>Search LinkedIn</span>
+              <span>Search LinkedIn India</span>
               <ArrowUpRight className="w-3.5 h-3.5" />
             </a>
 
-            <a
-              href={customTwitterSearchUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#171922] hover:bg-[#232634] text-slate-200 border border-[#272a38] rounded-xl text-xs font-semibold transition-colors"
+            <button
+              onClick={() => {
+                setActiveQuery('');
+                setSearchInput('');
+              }}
+              className="px-4 py-2 bg-[#161824] hover:bg-[#202334] text-slate-200 border border-[#26293a] rounded-xl text-xs font-semibold transition-colors"
             >
-              <span>Search 𝕏</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
+              Reset Filters
+            </button>
           </div>
         </div>
       )}
@@ -702,24 +649,24 @@ export default function SearchEngine({
           onClick={() => setSelectedFounderModal(null)}
         >
           <div 
-            className="bg-[#111218] border border-[#2c3042] rounded-2xl max-w-lg w-full p-6 text-slate-100 shadow-2xl relative space-y-5"
+            className="bg-[#10121a] border border-[#2b3044] rounded-2xl max-w-lg w-full p-6 text-slate-100 shadow-2xl relative space-y-5"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close Button */}
             <button
               onClick={() => setSelectedFounderModal(null)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-[#1a1c26] transition-colors"
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-[#181a26] transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
 
             {/* Profile Overview */}
             <div className="flex items-start gap-3.5">
-              <div className="w-12 h-12 rounded-xl bg-[#1c1e2a] border border-[#2c3042] text-indigo-400 flex items-center justify-center font-bold text-base shrink-0">
+              <div className="w-12 h-12 rounded-xl bg-[#181a26] border border-[#2b3044] text-indigo-400 flex items-center justify-center font-bold text-base shrink-0 font-heading">
                 {selectedFounderModal.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
               </div>
               <div>
-                <h3 className="text-lg font-bold text-white flex items-center gap-1.5">
+                <h3 className="text-lg font-bold text-white flex items-center gap-1.5 font-heading">
                   <span>{selectedFounderModal.name}</span>
                   <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0" />
                 </h3>
@@ -727,7 +674,7 @@ export default function SearchEngine({
                   {selectedFounderModal.role} • {selectedFounderModal.company}
                 </div>
                 <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-1">
-                  <MapPin className="w-3 h-3 text-slate-500" />
+                  <MapPin className="w-3 h-3 text-indigo-400" />
                   <span>{selectedFounderModal.location}</span>
                   <span className="text-slate-600">•</span>
                   <span>{selectedFounderModal.sector}</span>
@@ -740,7 +687,7 @@ export default function SearchEngine({
               <div className="text-[11px] uppercase tracking-wider text-slate-500 font-bold mb-1">
                 Executive Background
               </div>
-              <p className="text-xs text-slate-300 leading-relaxed bg-[#090a0f] p-3 rounded-xl border border-[#1e202b]">
+              <p className="text-xs text-slate-300 leading-relaxed bg-[#07080c] p-3 rounded-xl border border-[#1c1f2e]">
                 {selectedFounderModal.bio}
               </p>
             </div>
@@ -753,7 +700,7 @@ export default function SearchEngine({
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {selectedFounderModal.speakerTopics.map((topic, i) => (
-                    <span key={i} className="text-xs px-2.5 py-1 bg-[#171922] text-slate-200 rounded-lg border border-[#232634]">
+                    <span key={i} className="text-xs px-2.5 py-1 bg-[#161824] text-slate-200 rounded-lg border border-[#202332]">
                       {topic}
                     </span>
                   ))}
@@ -762,13 +709,13 @@ export default function SearchEngine({
             )}
 
             {/* Contact Channels */}
-            <div className="pt-3 border-t border-[#1e202b] flex items-center justify-between text-xs">
+            <div className="pt-3 border-t border-[#1c1f2e] flex items-center justify-between text-xs">
               <div className="text-slate-400">
-                Email: <span className="text-white font-mono">{selectedFounderModal.email || 'Via LinkedIn Direct'}</span>
+                Email: <span className="text-white font-mono">{selectedFounderModal.email || 'Verified on LinkedIn'}</span>
               </div>
               <button
                 onClick={() => copyModalCard(selectedFounderModal)}
-                className="flex items-center gap-1 px-2.5 py-1 rounded bg-[#171922] hover:bg-[#232634] text-slate-300 hover:text-white transition-colors text-[11px]"
+                className="flex items-center gap-1 px-2.5 py-1 rounded bg-[#161824] hover:bg-[#202334] text-slate-300 hover:text-white transition-colors text-[11px] font-medium"
               >
                 {modalCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                 <span>{modalCopied ? 'Card Copied!' : 'Copy Briefing Card'}</span>
@@ -782,7 +729,7 @@ export default function SearchEngine({
                   onSelectFounderForPitch(selectedFounderModal);
                   setSelectedFounderModal(null);
                 }}
-                className="px-3.5 py-2 bg-[#171922] hover:bg-[#232634] text-slate-200 rounded-xl text-xs font-semibold transition-colors"
+                className="px-3.5 py-2 bg-[#161824] hover:bg-[#202334] text-slate-200 rounded-xl text-xs font-semibold transition-colors"
               >
                 Draft Outreach Message
               </button>

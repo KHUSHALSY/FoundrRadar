@@ -2,12 +2,12 @@
 
 @layer base {
   :root {
-    --bg-primary: #090a0f;
-    --bg-secondary: #0f1118;
-    --bg-card: #111218;
-    --bg-card-hover: #161822;
-    --border-color: #202330;
-    --border-hover: #32374b;
+    --bg-primary: #07080c;
+    --bg-secondary: #0d0f15;
+    --bg-card: #10121a;
+    --bg-card-hover: #161824;
+    --border-color: #1e212f;
+    --border-hover: #31374d;
     --accent: #6366f1;
     --accent-hover: #4f46e5;
   }
@@ -15,17 +15,49 @@
   body {
     background-color: var(--bg-primary);
     color: #e2e8f0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", Helvetica, Arial, sans-serif;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
+  h1, h2, h3, .font-heading {
+    font-family: 'Outfit', sans-serif;
+  }
+
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
 }
 
-/* Animations & Transitions */
+/* Radar & Scanner Animations */
+@keyframes radarSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes radarPulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.2;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
@@ -39,29 +71,28 @@
     opacity: 1;
   }
   50% {
-    transform: scale(1.4);
+    transform: scale(1.3);
     opacity: 0.6;
   }
 }
 
-@keyframes subtleShimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
+.radar-spin {
+  animation: radarSpin 3.5s linear infinite;
+}
+
+.radar-pulse {
+  animation: radarPulse 2.5s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .pulse-dot {
   animation: pulseDot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* Smooth micro-interactions */
+/* Card hover with elevation and border illumination */
 .card-hover {
   transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), 
               border-color 0.22s ease, 
@@ -73,10 +104,9 @@
   transform: translateY(-3px);
   border-color: #3b4259;
   background-color: var(--bg-card-hover);
-  box-shadow: 0 16px 32px -10px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(99, 102, 241, 0.25);
+  box-shadow: 0 16px 36px -12px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(99, 102, 241, 0.22);
 }
 
-/* Button pulse & press states */
 button:active, a:active {
   transform: scale(0.97);
 }
@@ -89,16 +119,16 @@ input:focus-visible, select:focus-visible, button:focus-visible {
 
 /* Minimalist custom scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: #090a0f;
+  background: #07080c;
 }
 ::-webkit-scrollbar-thumb {
-  background: #232634;
+  background: #1e212f;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #373c4f;
+  background: #31374d;
 }
