@@ -78,6 +78,23 @@ Generate 8 high-converting, personalized outreach formats:
 
 ---
 
+
+## 🏗️ System Architecture
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                       FounderRadar UI Layer                     │
+├─────────────────┬──────────────────┬──────────────┬─────────────┤
+│  Finder Engine  │  Curated Index   │ Pipeline CRM │ Pitch Suite │
+└────────┬────────┴────────┬─────────┴──────┬───────┴──────┬──────┘
+         │                 │                │              │
+         ▼                 ▼                ▼              ▼
+┌─────────────────┐ ┌──────────────┐ ┌─────────────┐ ┌───────────┐
+│ Direct URL &    │ │ 60+ Indexed  │ │localStorage │ │ 8 Tested  │
+│ Contact Routing │ │ Profiles     │ │ Persistence │ │ Frameworks│
+└─────────────────┘ └──────────────┘ └─────────────┘ └───────────┘
+```
+
 ## 🛠️ Tech Stack
 
 - **Frontend Framework**: [React 19](https://react.dev)
