@@ -75,34 +75,48 @@ export default async function handler(req, res) {
     }
 
     // Try modern valid models supported by Gemini API
-    const modernModels = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-pro', 'gemini-pro-latest', 'gemini-2.5-flash-lite'];
+    const modernModels = [
+      'gemini-3.5-flash-lite',
+      'gemini-3.5-flash',
+      'gemini-3.7-flash',
+      'gemini-3.8-flash',
+      'gemini-flash-latest',
+      'gemini-2.5-flash'
+    ];
     const candidateModels = requestedModel && modernModels.includes(requestedModel)
       ? [requestedModel, ...modernModels.filter(m => m !== requestedModel)]
       : modernModels;
 
-    let lastError = null;
+    const attempts = {};
 
     for (const model of candidateModels) {
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`;
-      const googleRes = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: generationConfig || {}
-        })
-      });
+      try {
+        const googleRes = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: generationConfig || {}
+          })
+        });
 
-      if (googleRes.ok) {
-        const data = await googleRes.json();
-        return res.status(200).json(data);
-      } else {
-        const errData = await googleRes.json().catch(() => ({}));
-        lastError = errData?.error?.message || `Model ${model} failed`;
+        if (googleRes.ok) {
+          const data = await googleRes.json();
+          return res.status(200).json(data);
+        } else {
+          const errData = await googleRes.json().catch(() => ({}));
+          attempts[model] = errData?.error?.message || `HTTP ${googleRes.status}`;
+        }
+      } catch (reqErr) {
+        attempts[model] = reqErr.message;
       }
     }
 
-    return res.status(500).json({ error: lastError || 'All Gemini models failed' });
+    return res.status(500).json({ 
+      error: 'All Gemini models failed',
+      attempts
+    });
   } catch (error) {
     console.error('Serverless Gemini Proxy error:', error);
     return res.status(500).json({ error: error.message || 'Internal proxy error' });

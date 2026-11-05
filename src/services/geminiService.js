@@ -7,7 +7,7 @@
 const STORAGE_KEY_API_KEY = 'founderradar_gemini_api_key';
 const STORAGE_KEY_MODEL = 'founderradar_gemini_model';
 
-export const DEFAULT_MODEL = 'gemini-2.5-flash';
+export const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
 
 export function getStoredGeminiKey() {
   try {
