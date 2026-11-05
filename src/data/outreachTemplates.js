@@ -5,6 +5,38 @@
 
 export const OUTREACH_TEMPLATES = [
   {
+    id: "advisory-request",
+    name: "Executive Advisory Board Invitation",
+    badge: "High Status",
+    category: "Advisory",
+    description: "Inviting accomplished founders or domain experts to join your advisory board.",
+    generate: (vars) => {
+      const founderFirstName = vars.founderName ? vars.founderName.split(" ")[0] : "there";
+      const org = vars.organizationName || "Our Venture";
+      return {
+        subject: `Advisory Invitation: ${org} in ${vars.topic || "Enterprise Tech"}`,
+        body: `Dear ${founderFirstName},
+
+I hope this finds you well.
+
+I have followed your operator journey at ${vars.company || "your venture"} with great admiration. Your insights around ${vars.topic || "go-to-market and category creation"} are consistently spot-on.
+
+I am the founder of ${org}. We are currently architecting our next growth chapter and establishing a select Executive Advisory Board comprising 3 category veterans.
+
+Given your hands-on background, your strategic guidance would be extraordinarily impactful for our team. We offer standard advisor equity agreements (FAST framework) for a light commitment of 1-2 hours per quarter.
+
+Would you be open to an exploratory 15-minute conversation to see if our mission resonates with you?
+
+Warmly,
+
+${vars.senderName || "[Your Name]"}
+Founder & CEO | ${org}
+Direct: ${vars.senderPhone || "+1 (555) 019-2834"}`
+      };
+    }
+  },
+
+  {
     id: "linkedin-connect",
     name: "LinkedIn Connection Note (<300 chars)",
     badge: "Strictly <300 Chars",
