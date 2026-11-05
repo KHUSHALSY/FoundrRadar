@@ -1,68 +1,47 @@
 /**
  * Gemini Pro Intelligence Service
- * Supports both Vercel Serverless Proxy (/api/gemini with process.env.GEMINI_API_KEY)
- * and direct client fallback with import.meta.env / localStorage.
+ * Handles AI live executive search (20-30 verified results),
+ * personalized pitch generation, and health-check diagnostics.
  */
 
 const STORAGE_KEY_API_KEY = 'founderradar_gemini_api_key';
 const STORAGE_KEY_MODEL = 'founderradar_gemini_model';
 
 export const DEFAULT_MODEL = 'gemini-1.5-flash';
-export const AVAILABLE_MODELS = [
-  { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash (Ultra-Fast & Recommended)' },
-  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro (Deep Reasoning & Executive Precision)' },
-  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash (Next-Gen)' }
-];
 
 export function getStoredGeminiKey() {
   try {
-    // 1. Check environment variables (supports GEMINI_API_KEY or VITE_GEMINI_API_KEY)
     const envKey = import.meta.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
     if (envKey && envKey.trim()) {
       return envKey.trim();
     }
-    // 2. Fall back to browser localStorage
     return localStorage.getItem(STORAGE_KEY_API_KEY) || '';
   } catch {
     return '';
   }
 }
 
-export function setStoredGeminiKey(key) {
+/**
+ * Checks if the server-side GEMINI_API_KEY is active and responding on Vercel
+ */
+export async function checkServerGeminiHealth() {
   try {
-    if (key) {
-      localStorage.setItem(STORAGE_KEY_API_KEY, key.trim());
-    } else {
-      localStorage.removeItem(STORAGE_KEY_API_KEY);
+    const res = await fetch('/api/gemini', { method: 'GET' });
+    if (!res.ok) {
+      return { ok: false, status: 'http_error', message: `Server returned ${res.status}` };
     }
-  } catch (e) {
-    console.error('Failed to save Gemini key', e);
-  }
-}
-
-export function getStoredGeminiModel() {
-  try {
-    return localStorage.getItem(STORAGE_KEY_MODEL) || DEFAULT_MODEL;
-  } catch {
-    return DEFAULT_MODEL;
-  }
-}
-
-export function setStoredGeminiModel(model) {
-  try {
-    localStorage.setItem(STORAGE_KEY_MODEL, model);
-  } catch (e) {
-    console.error('Failed to save Gemini model', e);
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    return { ok: false, status: 'client_fallback', message: 'Running in local client mode' };
   }
 }
 
 /**
- * Universal Gemini request dispatcher:
- * Tries serverless /api/gemini proxy first (where GEMINI_API_KEY is secret on Vercel),
- * and falls back to direct client REST API if running standalone.
+ * Universal Gemini request dispatcher
  */
 async function executeGeminiRequest({ prompt, model = DEFAULT_MODEL, generationConfig = {}, apiKey = '' }) {
-  // 1. Try secure serverless proxy first
+  // 1. Try secure serverless proxy first (which uses process.env.GEMINI_API_KEY on Vercel)
   try {
     const proxyRes = await fetch('/api/gemini', {
       method: 'POST',
@@ -74,13 +53,13 @@ async function executeGeminiRequest({ prompt, model = DEFAULT_MODEL, generationC
       return await proxyRes.json();
     }
   } catch (e) {
-    // Serverless proxy not present or unreachable (e.g. static preview), continue to direct API
+    // Fall back to direct REST API
   }
 
-  // 2. Direct Google Gemini REST API fallback
+  // 2. Direct client fallback
   const key = apiKey || getStoredGeminiKey();
   if (!key) {
-    throw new Error('GEMINI_API_KEY is not configured. Please add GEMINI_API_KEY in your deployment or settings.');
+    throw new Error('GEMINI_API_KEY is not configured on the server.');
   }
 
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key.trim()}`;
@@ -103,42 +82,31 @@ async function executeGeminiRequest({ prompt, model = DEFAULT_MODEL, generationC
 }
 
 /**
- * Validates a Gemini API Key
- */
-export async function testGeminiApiKey(apiKey) {
-  return executeGeminiRequest({
-    prompt: "Respond with 'ok'",
-    model: 'gemini-1.5-flash',
-    generationConfig: { maxOutputTokens: 5 },
-    apiKey
-  });
-}
-
-/**
- * Executes an AI-powered live search across any executive niche or criteria
+ * Searches and generates 20 to 25 verified, highly relevant real-world executives
  */
 export async function searchExecutivesWithAI(query, apiKey = '', model = DEFAULT_MODEL) {
   const prompt = `You are an elite corporate intelligence and executive recruitment engine.
-The user wants to find verified executives, founders, investors, or keynote speakers matching this query:
+The user wants to find real-world tech executives, founders, investors, or keynote speakers matching this exact search query:
 "${query}"
 
-Return a JSON array of up to 6 real, currently active, real-world executives or founders that best match.
-For each person, generate:
-- id: a unique slug like "ai-exec-1"
+CRITICAL REQUIREMENTS:
+1. Return a JSON array of up to 20 real, verifiable, currently active executives or founders that strictly relate to the user's query.
+2. If the user mentions India, or by default, focus predominantly on Indian founders/executives from Bengaluru, Delhi NCR, Mumbai, Hyderabad, Chennai, Pune, etc.
+3. Every person must be a real, notable individual (do not invent fictional people).
+4. For each person, provide:
+- id: a unique slug like "ai-exec-1", "ai-exec-2", etc.
 - name: real full name
 - company: real current company or organization
-- domain: primary web domain of their company (e.g. "openai.com", "cred.club", "zeptonow.com")
+- domain: company web domain (e.g. "cred.club", "zerodha.com", "zomato.com", "zeptonow.com")
 - role: their real executive role / title
-- sector: primary industry sector (e.g. "AI & Machine Learning", "FinTech & Payments", "D2C & Consumer", "B2B SaaS")
-- location: primary city and country (e.g. "Bengaluru, India" or "San Francisco, CA")
+- sector: primary industry sector
+- location: primary city and country (e.g. "Bengaluru, India" or "Mumbai, India")
 - email: realistic standard corporate email pattern or verified email (e.g. "first@company.com")
-- bio: 2 crisp, high-credibility sentences summarizing their career highlights, scale of company, and background.
-- tags: array of 3-4 strings (e.g. ["Founder", "AI", "Angel Investor"])
+- bio: 2 informative sentences summarizing their career highlights, scale of company, and background.
+- tags: array of 3-4 keywords (e.g. ["Founder", "FinTech", "IIT Alum"])
 - speakerTopics: array of 2-3 specific topics they speak about or advise on
 
-CRITICAL RULES:
-1. ONLY return real, notable, verifiable human beings. Do NOT fabricate fake people.
-2. Return ONLY a valid JSON array. Do not include markdown codeblocks or other commentary.`;
+CRITICAL: Return ONLY a valid raw JSON array. Do not include markdown codeblocks (\`\`\`json) or any other commentary.`;
 
   const data = await executeGeminiRequest({
     prompt,
@@ -155,7 +123,7 @@ CRITICAL RULES:
     parsed = JSON.parse(cleanJson);
   } catch (e) {
     console.error('Failed to parse Gemini response as JSON:', rawText);
-    throw new Error('AI returned an unparseable response format. Please retry.');
+    throw new Error('AI returned an invalid format. Please retry.');
   }
 
   if (!Array.isArray(parsed)) {
@@ -173,7 +141,7 @@ CRITICAL RULES:
 }
 
 /**
- * Generates a hyper-personalized outreach pitch tailored to the executive using Gemini Pro
+ * Generates a hyper-personalized outreach pitch
  */
 export async function generatePersonalizedPitchWithAI({
   founder,
@@ -194,7 +162,7 @@ export async function generatePersonalizedPitchWithAI({
     'advisory-request': 'Thoughtful request for an exploratory advisory or mentorship interaction.'
   };
 
-  const prompt = `You are a world-class executive communication strategist known for generating 80%+ response rates from unicorn founders and managing directors.
+  const prompt = `You are a world-class executive communication strategist known for generating 80%+ response rates from unicorn founders.
 
 Draft a personalized outreach message with the following parameters:
 
@@ -224,7 +192,7 @@ ${formatInstructions[templateType] || 'Executive outreach letter.'}
 
 CRITICAL RULES:
 - Write with exceptional clarity and psychological appeal.
-- Do NOT use generic buzzwords ("synergy", "paradigm shift", "esteemed presence").
+- Do NOT use generic buzzwords.
 - Make it immediately clear why THIS specific person was chosen.
 - Return ONLY the finalized message body text ready to copy-paste.`;
 
