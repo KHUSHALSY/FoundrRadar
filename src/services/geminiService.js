@@ -1,7 +1,7 @@
 /**
  * Gemini Pro Intelligence Service
- * Provides real-time executive search and hyper-personalized pitch generation
- * using Google's Gemini models directly via REST API.
+ * Supports both Vercel Serverless Proxy (/api/gemini with process.env.GEMINI_API_KEY)
+ * and direct client fallback with import.meta.env / localStorage.
  */
 
 const STORAGE_KEY_API_KEY = 'founderradar_gemini_api_key';
@@ -16,8 +16,8 @@ export const AVAILABLE_MODELS = [
 
 export function getStoredGeminiKey() {
   try {
-    // 1. Prioritize environment variable (for deployed/shared app with bundled key)
-    const envKey = import.meta.env.VITE_GEMINI_API_KEY;
+    // 1. Check environment variables (supports GEMINI_API_KEY or VITE_GEMINI_API_KEY)
+    const envKey = import.meta.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
     if (envKey && envKey.trim()) {
       return envKey.trim();
     }
@@ -57,41 +57,67 @@ export function setStoredGeminiModel(model) {
 }
 
 /**
- * Validates a Gemini API Key with a lightweight ping
+ * Universal Gemini request dispatcher:
+ * Tries serverless /api/gemini proxy first (where GEMINI_API_KEY is secret on Vercel),
+ * and falls back to direct client REST API if running standalone.
  */
-export async function testGeminiApiKey(apiKey) {
-  if (!apiKey || !apiKey.trim()) {
-    throw new Error('Please enter a valid Gemini API key.');
+async function executeGeminiRequest({ prompt, model = DEFAULT_MODEL, generationConfig = {}, apiKey = '' }) {
+  // 1. Try secure serverless proxy first
+  try {
+    const proxyRes = await fetch('/api/gemini', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, model, generationConfig })
+    });
+
+    if (proxyRes.ok) {
+      return await proxyRes.json();
+    }
+  } catch (e) {
+    // Serverless proxy not present or unreachable (e.g. static preview), continue to direct API
   }
 
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`;
+  // 2. Direct Google Gemini REST API fallback
+  const key = apiKey || getStoredGeminiKey();
+  if (!key) {
+    throw new Error('GEMINI_API_KEY is not configured. Please add GEMINI_API_KEY in your deployment or settings.');
+  }
+
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key.trim()}`;
 
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: "Respond with 'ok'" }] }],
-      generationConfig: { maxOutputTokens: 5 }
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig
     })
   });
 
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    const message = errorData?.error?.message || `API error (${res.status})`;
-    throw new Error(message);
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `API error (${res.status})`);
   }
 
-  return true;
+  return await res.json();
+}
+
+/**
+ * Validates a Gemini API Key
+ */
+export async function testGeminiApiKey(apiKey) {
+  return executeGeminiRequest({
+    prompt: "Respond with 'ok'",
+    model: 'gemini-1.5-flash',
+    generationConfig: { maxOutputTokens: 5 },
+    apiKey
+  });
 }
 
 /**
  * Executes an AI-powered live search across any executive niche or criteria
  */
-export async function searchExecutivesWithAI(query, apiKey, model = DEFAULT_MODEL) {
-  if (!apiKey) {
-    throw new Error('Gemini API key is required for AI Live Search.');
-  }
-
+export async function searchExecutivesWithAI(query, apiKey = '', model = DEFAULT_MODEL) {
   const prompt = `You are an elite corporate intelligence and executive recruitment engine.
 The user wants to find verified executives, founders, investors, or keynote speakers matching this query:
 "${query}"
@@ -114,29 +140,14 @@ CRITICAL RULES:
 1. ONLY return real, notable, verifiable human beings. Do NOT fabricate fake people.
 2. Return ONLY a valid JSON array. Do not include markdown codeblocks or other commentary.`;
 
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`;
-
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.2,
-        topP: 0.8
-      }
-    })
+  const data = await executeGeminiRequest({
+    prompt,
+    model,
+    generationConfig: { temperature: 0.2, topP: 0.8 },
+    apiKey
   });
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `AI search request failed (${res.status})`);
-  }
-
-  const data = await res.json();
   const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
-  
-  // Clean potential markdown blocks
   const cleanJson = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
   
   let parsed = [];
@@ -169,13 +180,9 @@ export async function generatePersonalizedPitchWithAI({
   initiative,
   sender,
   templateType = 'linkedin-connect',
-  apiKey,
+  apiKey = '',
   model = DEFAULT_MODEL
 }) {
-  if (!apiKey) {
-    throw new Error('Gemini API key is required to generate custom AI pitches.');
-  }
-
   const formatInstructions = {
     'linkedin-connect': 'STRICT REQUIREMENT: Must be under 300 characters total (including spaces) so it never gets truncated by LinkedIn.',
     'keynote-invite': 'Professional 3-paragraph executive conference or keynote invitation.',
@@ -221,25 +228,13 @@ CRITICAL RULES:
 - Make it immediately clear why THIS specific person was chosen.
 - Return ONLY the finalized message body text ready to copy-paste.`;
 
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`;
-
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.4
-      }
-    })
+  const data = await executeGeminiRequest({
+    prompt,
+    model,
+    generationConfig: { temperature: 0.4 },
+    apiKey
   });
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `AI pitch generation failed (${res.status})`);
-  }
-
-  const data = await res.json();
   const output = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
   return output.trim();
 }
