@@ -123,6 +123,7 @@ export default function App() {
         <div className="fixed bottom-6 right-6 z-50 bg-[#151720] border border-[#2c3042] text-white px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-2xl">
           <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
           <span>{toastMessage}</span>
+          <button onClick={() => setToastMessage('')} className="ml-1 text-slate-400 hover:text-white text-xs">✕</button>
         </div>
       )}
 
