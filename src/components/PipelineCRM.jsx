@@ -59,6 +59,17 @@ export default function PipelineCRM({
     setEditingNotesId(null);
   };
 
+  const exportToJSON = () => {
+    if (pipeline.length === 0) return;
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(pipeline, null, 2));
+    const dlAnchor = document.createElement('a');
+    dlAnchor.setAttribute("href", dataStr);
+    dlAnchor.setAttribute("download", `FounderRadar_Pipeline_${new Date().toISOString().slice(0, 10)}.json`);
+    document.body.appendChild(dlAnchor);
+    dlAnchor.click();
+    dlAnchor.remove();
+  };
+
   const exportToCSV = () => {
     if (pipeline.length === 0) return;
 
@@ -155,7 +166,15 @@ export default function PipelineCRM({
             className="flex items-center gap-1.5 px-3 py-1.5 bg-[#171922] hover:bg-[#232634] disabled:opacity-40 text-slate-200 border border-[#2c3042] rounded-lg text-xs font-medium"
           >
             <Download className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Export to CSV</span>
+            <span>Export CSV</span>
+          </button>
+          <button
+            onClick={exportToJSON}
+            disabled={pipeline.length === 0}
+            className="flex items-center gap-1 px-2.5 py-1.5 bg-[#171922] hover:bg-[#232634] disabled:opacity-40 text-slate-300 border border-[#2c3042] rounded-lg text-xs font-medium"
+            title="Export as JSON"
+          >
+            <span>JSON</span>
           </button>
 
           {pipeline.length > 0 && (
