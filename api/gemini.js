@@ -99,7 +99,14 @@ export default async function handler(req, res) {
           return res.status(200).json(data);
         } else {
           const errData = await googleRes.json().catch(() => ({}));
-          lastError = errData?.error?.message || `HTTP ${googleRes.status}`;
+          const rawMsg = errData?.error?.message || `HTTP ${googleRes.status}`;
+          
+          if (rawMsg.includes('Quota exceeded') || rawMsg.includes('exceeded your current quota')) {
+            lastError = 'Google Gemini Free Tier daily quota limit reached on your Google account';
+          } else {
+            lastError = rawMsg;
+          }
+          
           // If high demand spike, brief 400ms pause before next fallback model
           if (googleRes.status === 503 || googleRes.status === 429) {
             await new Promise(r => setTimeout(r, 400));
