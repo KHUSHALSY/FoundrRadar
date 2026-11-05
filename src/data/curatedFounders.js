@@ -1,4 +1,36 @@
 export const CURATED_FOUNDERS = [
+  // --- ClimateTech, Robotics & DeepTech ---
+  {
+    id: "f-deep-1",
+    name: "Tony Fadell",
+    company: "Build Collective / Nest",
+    role: "Founder, Author & Principal",
+    sector: "Hardware & ClimateTech",
+    location: "Paris / Silicon Valley",
+    email: "tony@buildcollective.com",
+    linkedin: "https://www.linkedin.com/in/tonyfadell/",
+    twitter: "https://x.com/tfadell",
+    reddit: "https://www.reddit.com/r/gadgets",
+    bio: "Inventor of the iPod, co-creator of iPhone, founder of Nest. Author of 'Build', backing 200+ hardware and climate tech startups.",
+    tags: ["Hardware Legend", "Nest Founder", "ClimateTech", "Author"],
+    speakerTopics: ["Building Hardware Products That Matter", "Climate Tech Scaling", "The Product Design Philosophy"]
+  },
+  {
+    id: "f-deep-2",
+    name: "Brett Adcock",
+    company: "Figure AI / Archer Aviation",
+    role: "Founder & CEO",
+    sector: "Robotics & Humanoid AI",
+    location: "Sunnyvale, CA",
+    email: "brett@figure.ai",
+    linkedin: "https://www.linkedin.com/in/brettadcock/",
+    twitter: "https://x.com/adcock_brett",
+    reddit: "https://www.reddit.com/r/robotics",
+    bio: "Serial technology entrepreneur building autonomous humanoid robots at Figure AI. Previously founded Archer Aviation and Vettery.",
+    tags: ["Humanoid Robotics", "DeepTech", "Figure AI", "Serial Founder"],
+    speakerTopics: ["Embodied AI and Humanoid Robotics", "First Principles Manufacturing", "High-Stakes Capital Allocation"]
+  },
+
   // --- AI & Generative Tech ---
   {
     id: "f-ai-1",
