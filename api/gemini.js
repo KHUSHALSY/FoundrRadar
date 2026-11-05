@@ -15,7 +15,7 @@ export default async function handler(req, res) {
 
   const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
 
-  // GET Request: Diagnostic Health Check to verify if GEMINI_API_KEY is working on Vercel
+  // GET Request: Diagnostic Health Check
   if (req.method === 'GET') {
     if (!apiKey || !apiKey.trim()) {
       return res.status(200).json({
@@ -26,50 +26,33 @@ export default async function handler(req, res) {
     }
 
     try {
-      // Test ping to Google Gemini API
-      const testRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: "Respond with 'ok'" }] }],
-            generationConfig: { maxOutputTokens: 5 }
-          })
-        }
-      );
+      // 1. Fetch available models for this specific API key
+      const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey.trim()}`);
+      const listData = await listRes.json().catch(() => ({}));
 
-      if (testRes.ok) {
-        return res.status(200).json({
-          ok: true,
-          status: 'verified_active',
-          message: 'Gemini API Key is valid and active on Vercel!',
-          model: 'gemini-1.5-flash'
-        });
-      } else {
-        const errData = await testRes.json().catch(() => ({}));
-        // Fetch available models for this key to discover exact supported model names
-        const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey.trim()}`);
-        const listData = await listRes.json().catch(() => ({}));
-        const available = listData.models ? listData.models.map(m => m.name) : [];
-
+      if (!listRes.ok) {
         return res.status(200).json({
           ok: false,
-          status: 'api_error',
-          error: errData?.error?.message || 'Model error',
-          availableModels: available
+          status: 'invalid_key',
+          error: listData?.error?.message || 'Failed to authenticate with Google Gemini API'
         });
       }
-        return res.status(200).json({
-          ok: false,
-          status: 'api_error',
-          error: errData?.error?.message || 'Google rejected the API key.'
-        });
-      }
+
+      const models = listData.models || [];
+      const supported = models
+        .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'))
+        .map(m => m.name.replace(/^models\//, ''));
+
+      return res.status(200).json({
+        ok: true,
+        status: 'verified_active',
+        message: 'Gemini API Key is valid and active on Vercel!',
+        availableModels: supported
+      });
     } catch (err) {
       return res.status(200).json({
         ok: false,
-        status: 'network_error',
+        status: 'server_error',
         error: err.message
       });
     }
@@ -85,30 +68,40 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { prompt, model = 'gemini-1.5-flash', generationConfig } = req.body;
+    const { prompt, model: requestedModel, generationConfig } = req.body;
 
     if (!prompt) {
       return res.status(400).json({ error: 'Missing prompt parameter' });
     }
 
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`;
+    // Try a list of fallback models in case the account has specific version access
+    const candidateModels = requestedModel 
+      ? [requestedModel, 'gemini-1.5-flash-latest', 'gemini-1.5-pro', 'gemini-pro', 'gemini-1.5-flash']
+      : ['gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'];
 
-    const googleRes = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: generationConfig || {}
-      })
-    });
+    let lastError = null;
 
-    if (!googleRes.ok) {
-      const errData = await googleRes.json().catch(() => ({}));
-      return res.status(googleRes.status).json(errData);
+    for (const model of candidateModels) {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`;
+      const googleRes = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: generationConfig || {}
+        })
+      });
+
+      if (googleRes.ok) {
+        const data = await googleRes.json();
+        return res.status(200).json(data);
+      } else {
+        const errData = await googleRes.json().catch(() => ({}));
+        lastError = errData?.error?.message || `Model ${model} failed`;
+      }
     }
 
-    const data = await googleRes.json();
-    return res.status(200).json(data);
+    return res.status(500).json({ error: lastError || 'All Gemini models failed' });
   } catch (error) {
     console.error('Serverless Gemini Proxy error:', error);
     return res.status(500).json({ error: error.message || 'Internal proxy error' });
