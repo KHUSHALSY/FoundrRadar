@@ -2,6 +2,13 @@
 
 All notable changes to FounderRadar Pro are documented in this file.
 
+## [1.1.1] - 2026-11-05
+### Added
+- Unit test suite setup with Vitest for URL helpers, email validation, and template budgets.
+- ASCII system architecture and FAQ documentation in README.
+- Added Longevity, BioTech, and Cybersecurity founders to directory.
+- Added ESC key handler for search input clearing.
+
 ## [1.1.0] - 2026-11-05
 ### Added
 - Expanded verified founder directory across ClimateTech, Hardware, and DevTools.
