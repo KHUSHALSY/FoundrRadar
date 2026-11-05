@@ -208,7 +208,7 @@ export default function SearchEngine({
           <div className="flex items-center justify-center gap-2">
             <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center gap-1.5 font-mono">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 pulse-dot" />
-              <span>{serverHealth?.ok ? 'Gemini Pro AI Connected' : 'Indian Founder Intelligence Engine'}</span>
+              <span>{serverHealth?.ok ? 'AI Executive Intelligence Active' : 'Indian Founder Intelligence Engine'}</span>
             </span>
           </div>
 
@@ -216,7 +216,7 @@ export default function SearchEngine({
             Executive & Founder Discovery
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 max-w-xl mx-auto">
-            Type any startup topic, industry, or role. Powered by Gemini Pro to return 20–30 verified leaders with direct LinkedIn connection access.
+            Type any startup topic, industry, or role to discover verified leaders with direct LinkedIn connection access.
           </p>
         </div>
 
@@ -304,22 +304,22 @@ export default function SearchEngine({
         {isSearchingAI && (
           <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl max-w-md mx-auto text-xs text-indigo-300 flex items-center justify-center gap-2 animate-pulse">
             <Sparkles className="w-4 h-4 text-amber-300 animate-spin" />
-            <span>Scanning verified ecosystem via Gemini Pro for "{activeQuery}"...</span>
+            <span>Scanning verified executive ecosystem for "{activeQuery}"...</span>
           </div>
         )}
 
-        {/* AI Notice / Graceful Fallback banner */}
+        {/* Notice / Graceful Fallback banner */}
         {aiSearchError && !isSearchingAI && (
           <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl max-w-xl mx-auto text-xs text-amber-300 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
-              <span className="text-left">{aiSearchError}. Showing relevant Indian ecosystem founders below.</span>
+              <span className="text-left">Live radar notice: Showing relevant Indian ecosystem founders below.</span>
             </div>
             <button
               onClick={() => handleExecuteSearch()}
-              className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 rounded text-[11px] font-bold shrink-0"
+              className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 rounded text-[11px] font-bold shrink-0 cursor-pointer"
             >
-              Retry AI
+              Scan Again
             </button>
           </div>
         )}

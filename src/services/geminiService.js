@@ -89,46 +89,73 @@ async function executeGeminiRequest({ prompt, model = DEFAULT_MODEL, generationC
 }
 
 /**
- * Robust JSON extraction helper for LLM responses
+ * Robust, fault-tolerant JSON extraction helper for LLM responses
+ * Handles markdown formatting, partial truncations, and missing closing brackets.
  */
 function extractJsonArray(rawText) {
   if (!rawText) return [];
-  // Strip code blocks
+  // Strip code blocks and conversational text
   let clean = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
   
-  // Try direct parse
+  // 1. Direct parse attempt
   try {
     const parsed = JSON.parse(clean);
-    if (Array.isArray(parsed)) return parsed;
+    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
   } catch (e) {
-    // Try finding the first [ and last ]
-    const start = clean.indexOf('[');
+    // Continue to repair
+  }
+
+  // 2. Bracket slice attempt
+  const start = clean.indexOf('[');
+  if (start !== -1) {
     const end = clean.lastIndexOf(']');
-    if (start !== -1 && end !== -1 && end > start) {
+    if (end > start) {
       try {
-        const sliced = clean.slice(start, end + 1);
-        const parsed = JSON.parse(sliced);
-        if (Array.isArray(parsed)) return parsed;
-      } catch (innerErr) {
-        console.warn('Regex JSON parse failed:', innerErr);
-      }
+        const parsed = JSON.parse(clean.slice(start, end + 1));
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {}
+    }
+
+    // 3. Truncated Array repair (Find last complete closing '}' and close with ']')
+    const lastBrace = clean.lastIndexOf('}');
+    if (lastBrace > start) {
+      try {
+        const repaired = clean.slice(start, lastBrace + 1) + ']';
+        const parsed = JSON.parse(repaired);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {}
     }
   }
-  return [];
+
+  // 4. Regex object fallback (harvest every complete JSON object)
+  const objects = [];
+  const regex = /\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g;
+  let match;
+  while ((match = regex.exec(clean)) !== null) {
+    try {
+      const obj = JSON.parse(match[0]);
+      if (obj && (obj.name || obj.company)) {
+        objects.push(obj);
+      }
+    } catch (e) {}
+  }
+
+  return objects;
 }
 
 /**
- * Searches and generates 15-20 verified, highly relevant real-world executives
+ * Searches and generates 12-15 verified, highly relevant real-world executives
  */
 export async function searchExecutivesWithAI(query, apiKey = '', model = DEFAULT_MODEL) {
   const prompt = `You are an elite corporate intelligence engine for foundrRadar.
-Find 15 real-world tech executives, founders, or investors strictly related to: "${query}".
+Find 12 real-world tech executives, founders, or investors strictly related to: "${query}".
 
 RULES:
 1. Focus predominantly on Indian founders/executives from Bengaluru, Delhi NCR, Mumbai, Hyderabad, Pune, Chennai, etc.
 2. Return ONLY real, notable individuals (e.g. unicorn founders, VC partners, top startup operators).
 3. Return ONLY a valid JSON array of objects. Do not write any markdown code fences or conversational text.
-4. Each object must have these exact keys:
+4. Keep each bio to 1 concise sentence.
+5. Each object must have these exact keys:
    - "name": string (real full name)
    - "company": string (real company)
    - "domain": string (e.g. "zerodha.com", "cred.club", "razorpay.com", "zomato.com")
@@ -136,7 +163,7 @@ RULES:
    - "sector": string (e.g. "FinTech", "Quick Commerce", "EdTech", "AI & SaaS")
    - "location": string (e.g. "Bengaluru, India", "Mumbai, India")
    - "email": string (standard corporate email pattern)
-   - "bio": string (1-2 sentences summarizing their venture and achievements)
+   - "bio": string (1 concise sentence)
    - "tags": array of 3 short keywords (e.g. ["FinTech", "Unicorn", "Angel"])
    - "speakerTopics": array of 2 key discussion topics`;
 
@@ -145,7 +172,7 @@ RULES:
     model,
     generationConfig: { 
       temperature: 0.2,
-      maxOutputTokens: 2500
+      maxOutputTokens: 4096
     },
     apiKey
   });
@@ -154,7 +181,7 @@ RULES:
   const parsed = extractJsonArray(rawText);
 
   if (!parsed || parsed.length === 0) {
-    throw new Error('AI returned an unparseable response. Please retry.');
+    throw new Error('AI search encountered formatting issue. Please retry.');
   }
 
   // Hydrate with bulletproof LinkedIn URLs
