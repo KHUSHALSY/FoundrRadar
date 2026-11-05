@@ -16,6 +16,12 @@ export const AVAILABLE_MODELS = [
 
 export function getStoredGeminiKey() {
   try {
+    // 1. Prioritize environment variable (for deployed/shared app with bundled key)
+    const envKey = import.meta.env.VITE_GEMINI_API_KEY;
+    if (envKey && envKey.trim()) {
+      return envKey.trim();
+    }
+    // 2. Fall back to browser localStorage
     return localStorage.getItem(STORAGE_KEY_API_KEY) || '';
   } catch {
     return '';

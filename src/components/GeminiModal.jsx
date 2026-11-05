@@ -7,6 +7,7 @@ import {
 } from '../services/geminiService';
 
 export default function GeminiModal({ isOpen, onClose, onKeyUpdated }) {
+  const isEnvKeyActive = Boolean(import.meta.env.VITE_GEMINI_API_KEY && import.meta.env.VITE_GEMINI_API_KEY.trim());
   const [apiKey, setApiKey] = useState(() => getStoredGeminiKey());
   const [selectedModel, setSelectedModel] = useState(() => getStoredGeminiModel());
   const [isTesting, setIsTesting] = useState(false);
@@ -83,6 +84,17 @@ export default function GeminiModal({ isOpen, onClose, onKeyUpdated }) {
             </p>
           </div>
         </div>
+
+        {/* Global Project Key Notice */}
+        {isEnvKeyActive && (
+          <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center gap-2 text-xs text-emerald-300">
+            <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+            <div>
+              <span className="font-semibold text-white">Project Key Active: </span>
+              All visitors are automatically using the project's built-in Gemini Pro key. No individual setup required!
+            </div>
+          </div>
+        )}
 
         {/* Security badge */}
         <div className="p-3 bg-[#090a0f] border border-[#1e202b] rounded-xl flex items-start gap-2.5 text-xs text-slate-400">
