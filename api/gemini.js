@@ -48,6 +48,18 @@ export default async function handler(req, res) {
         });
       } else {
         const errData = await testRes.json().catch(() => ({}));
+        // Fetch available models for this key to discover exact supported model names
+        const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey.trim()}`);
+        const listData = await listRes.json().catch(() => ({}));
+        const available = listData.models ? listData.models.map(m => m.name) : [];
+
+        return res.status(200).json({
+          ok: false,
+          status: 'api_error',
+          error: errData?.error?.message || 'Model error',
+          availableModels: available
+        });
+      }
         return res.status(200).json({
           ok: false,
           status: 'api_error',
