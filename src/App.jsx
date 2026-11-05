@@ -1,22 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import SearchEngine from './components/SearchEngine';
-import CuratedDirectory from './components/CuratedDirectory';
 import PipelineCRM from './components/PipelineCRM';
 import PitchGenerator from './components/PitchGenerator';
 import Playbook from './components/Playbook';
-import { Sparkles, Share2, Compass } from 'lucide-react';
-import confetti from 'canvas-confetti';
+import { Sparkles, Share2 } from 'lucide-react';
 
-const STORAGE_KEY = 'founderradar_pro_pipeline_v1';
+const STORAGE_KEY = 'founderradar_pro_pipeline_v2';
 
-const INITIAL_PIPELINE_SAMPLE = [
+const INITIAL_PIPELINE = [
   {
-    id: 'f-3',
+    id: 'f-fin-1',
     name: 'Kunal Shah',
     company: 'CRED',
     role: 'Founder & CEO',
-    sector: 'FinTech / High-Trust Networks',
+    sector: 'FinTech & Payments',
     location: 'Bengaluru, India',
     email: 'kunal@cred.club',
     status: 'Call Scheduled',
@@ -24,7 +22,7 @@ const INITIAL_PIPELINE_SAMPLE = [
     notes: 'Keynote discussion on Delta 4 framework. Meeting with Chief of Staff booked.'
   },
   {
-    id: 'f-4',
+    id: 'f-d2c-1',
     name: 'Aman Gupta',
     company: 'boAt Lifestyle',
     role: 'Co-Founder & CMO',
@@ -36,12 +34,12 @@ const INITIAL_PIPELINE_SAMPLE = [
     notes: 'Sent personalized connect note. Reached out regarding annual growth fireside chat.'
   },
   {
-    id: 'f-1',
+    id: 'f-saas-1',
     name: 'Sanjeev Bikhchandani',
     company: 'Info Edge',
     role: 'Founder & Vice Chairman',
-    sector: 'Enterprise Tech / VC',
-    location: 'Delhi NCR / Global',
+    sector: 'B2B SaaS / Venture Capital',
+    location: 'Delhi NCR, India',
     email: 'sanjeev@infoedge.com',
     status: 'Confirmed',
     profileUrl: 'https://www.linkedin.com/in/sanjeev-bikhchandani-4279581/',
@@ -54,17 +52,15 @@ export default function App() {
   const [pipeline, setPipeline] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? JSON.parse(saved) : INITIAL_PIPELINE_SAMPLE;
+      return saved ? JSON.parse(saved) : INITIAL_PIPELINE;
     } catch {
-      return INITIAL_PIPELINE_SAMPLE;
+      return INITIAL_PIPELINE;
     }
   });
 
   const [selectedFounderForPitch, setSelectedFounderForPitch] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
-  const [copiedShare, setCopiedShare] = useState(false);
 
-  // Sync with localStorage
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(pipeline));
@@ -81,28 +77,28 @@ export default function App() {
   const handleAddToPipeline = (lead) => {
     const exists = pipeline.some(p => p.id === lead.id || (p.name && p.name.toLowerCase() === lead.name.toLowerCase()));
     if (exists) {
-      showToast(`${lead.name} is already in your Outreach Pipeline!`);
+      showToast(`${lead.name} is already in your pipeline!`);
       return;
     }
 
     const updated = [lead, ...pipeline];
     setPipeline(updated);
-    showToast(`Added ${lead.name} (${lead.company}) to Outreach Pipeline! 📋`);
+    showToast(`Added ${lead.name} to CRM pipeline`);
   };
 
   const handleUpdateStatus = (id, newStatus) => {
     setPipeline(prev => prev.map(p => p.id === id ? { ...p, status: newStatus } : p));
-    showToast(`Status updated to ${newStatus}`);
+    showToast(`Stage updated to ${newStatus}`);
   };
 
   const handleUpdateNotes = (id, notes) => {
     setPipeline(prev => prev.map(p => p.id === id ? { ...p, notes } : p));
-    showToast('Outreach log updated');
+    showToast('Outreach log saved');
   };
 
   const handleRemoveItem = (id) => {
     setPipeline(prev => prev.filter(p => p.id !== id));
-    showToast('Lead removed from pipeline');
+    showToast('Removed from pipeline');
   };
 
   const handleClearPipeline = () => {
@@ -114,33 +110,18 @@ export default function App() {
     setSelectedFounderForPitch(founder);
     setActiveTab('generator');
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    showToast(`Loaded details for ${founder.name} in Message Crafter! ✍️`);
-  };
-
-  const handleShareApp = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: 'FounderRadar Pro',
-        text: 'The Universal Multi-Platform Outreach & Intelligence Engine for Founders, Investors & Operators',
-        url: window.location.href
-      }).catch(() => {});
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-      setCopiedShare(true);
-      setTimeout(() => setCopiedShare(false), 2500);
-      showToast('App link copied to clipboard!');
-    }
+    showToast(`Loaded ${founder.name} in Message Crafter`);
   };
 
   const confirmedCount = pipeline.filter(p => p.status === 'Confirmed').length;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
+    <div className="min-h-screen bg-[#090a0f] text-slate-100 flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
       
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 animate-bounce bg-slate-900 border border-indigo-500/40 shadow-2xl shadow-indigo-500/20 text-white px-4 py-3 rounded-2xl text-xs sm:text-sm font-semibold flex items-center gap-2.5 backdrop-blur-md">
-          <Sparkles className="w-4 h-4 text-indigo-400" />
+        <div className="fixed bottom-6 right-6 z-50 bg-[#151720] border border-[#2c3042] text-white px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-2xl">
+          <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -153,21 +134,12 @@ export default function App() {
         confirmedCount={confirmedCount}
       />
 
-      {/* Main Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        
+      {/* Main Content View */}
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {activeTab === 'search' && (
           <SearchEngine 
             onAddToPipeline={handleAddToPipeline} 
             onSelectFounderForPitch={handleSelectFounderForPitch} 
-          />
-        )}
-
-        {activeTab === 'directory' && (
-          <CuratedDirectory 
-            onAddToPipeline={handleAddToPipeline} 
-            onSelectFounderForPitch={handleSelectFounderForPitch}
-            pipelineItems={pipeline}
           />
         )}
 
@@ -192,38 +164,25 @@ export default function App() {
         {activeTab === 'playbook' && (
           <Playbook />
         )}
-
       </main>
 
-      {/* Footer */}
-      <footer className="mt-auto border-t border-slate-800 bg-slate-900/50 py-8 px-4 sm:px-6">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+      {/* Minimal Footer */}
+      <footer className="mt-auto border-t border-[#1a1c26] py-6 px-4 sm:px-6 text-xs text-slate-500">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-slate-300">FounderRadar Pro</span>
+            <span className="text-slate-300 font-semibold">FounderRadar Pro</span>
             <span>•</span>
-            <span>Multi-Platform Executive Outreach & Intelligence Engine</span>
+            <span>Open-source executive outreach intelligence</span>
           </div>
-
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setActiveTab('playbook')} 
-              className="hover:text-slate-300 transition-colors"
+            <a 
+              href="https://github.com/KHUSHALSY/FoundrRadar" 
+              target="_blank" 
+              rel="noreferrer"
+              className="text-slate-400 hover:text-white"
             >
-              Executive Playbook
-            </button>
-            <button 
-              onClick={() => setActiveTab('pipeline')} 
-              className="hover:text-slate-300 transition-colors"
-            >
-              Pipeline CRM ({pipeline.length})
-            </button>
-            <button 
-              onClick={handleShareApp} 
-              className="text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1"
-            >
-              <Share2 className="w-3.5 h-3.5" />
-              <span>Share Application</span>
-            </button>
+              GitHub Repository
+            </a>
           </div>
         </div>
       </footer>
