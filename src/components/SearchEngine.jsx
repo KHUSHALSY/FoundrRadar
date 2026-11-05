@@ -128,6 +128,11 @@ export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch 
             placeholder="Search founders by industry or company... (Press / to focus)"
             className="w-full pl-11 pr-4 py-3 bg-[#090a0f] border border-[#272a38] rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm shadow-inner"
           />
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none">
+            <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono text-slate-500 bg-[#171922] border border-[#272a38] rounded">
+              /
+            </kbd>
+          </div>
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
