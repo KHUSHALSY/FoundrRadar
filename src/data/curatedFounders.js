@@ -1,4 +1,21 @@
 export const CURATED_FOUNDERS = [
+  // --- BioTech & HealthTech ---
+  {
+    id: "f-bio-1",
+    name: "Bryan Johnson",
+    company: "Kernel / Project Blueprint",
+    role: "Founder & Longevity Pioneer",
+    sector: "BioTech & Human Longevity",
+    location: "Venice, CA",
+    email: "blueprint@bryanjohnson.com",
+    linkedin: "https://www.linkedin.com/in/bryan-johnson-4089a81/",
+    twitter: "https://x.com/bryan_johnson",
+    reddit: "https://www.reddit.com/r/blueprint",
+    bio: "Sold Braintree/Venmo to PayPal for $800M. Founded Kernel for neural interfaces and Project Blueprint to pioneer human biological rejuvenation.",
+    tags: ["Longevity", "BioTech", "Braintree Founder", "Neurotech"],
+    speakerTopics: ["The Future of Human Longevity", "Neural Interface Architecture", "Extreme Biomarker Optimization"]
+  },
+
   // --- Developer Infrastructure & Open Source ---
   {
     id: "f-dev-1",
