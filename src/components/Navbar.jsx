@@ -1,7 +1,14 @@
 import React from 'react';
-import { Search, ClipboardList, PenTool, BookOpen, Compass, Share2 } from 'lucide-react';
+import { Search, ClipboardList, PenTool, BookOpen, Compass, Sparkles } from 'lucide-react';
 
-export default function Navbar({ activeTab, setActiveTab, pipelineCount = 0, confirmedCount = 0 }) {
+export default function Navbar({ 
+  activeTab, 
+  setActiveTab, 
+  pipelineCount = 0, 
+  confirmedCount = 0,
+  hasGeminiKey = false,
+  onOpenGeminiModal
+}) {
   const navItems = [
     { id: 'search', label: 'Finder', icon: Search },
     { 
@@ -16,7 +23,7 @@ export default function Navbar({ activeTab, setActiveTab, pipelineCount = 0, con
   ];
 
   return (
-    <header className="sticky top-0 z-50 bg-[#090a0f]/95 backdrop-blur-md border-b border-[#1c1e28]">
+    <header className="sticky top-0 z-40 bg-[#090a0f]/95 backdrop-blur-md border-b border-[#1c1e28]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-14">
           
@@ -25,7 +32,7 @@ export default function Navbar({ activeTab, setActiveTab, pipelineCount = 0, con
             className="flex items-center gap-2.5 cursor-pointer" 
             onClick={() => setActiveTab('search')}
           >
-            <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-xs">
+            <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-md">
               <Compass className="w-4 h-4 text-white" />
             </div>
             <div className="flex items-center gap-1.5">
@@ -33,13 +40,13 @@ export default function Navbar({ activeTab, setActiveTab, pipelineCount = 0, con
                 FounderRadar
               </span>
               <span className="text-[10px] font-semibold px-1.5 py-0.2 bg-[#171922] text-slate-400 border border-[#232634] rounded">
-                v1.1
+                v1.2
               </span>
             </div>
           </div>
 
           {/* Clean Minimalist Nav Tabs */}
-          <nav className="flex items-center gap-1" aria-label="Main Navigation">
+          <nav className="flex items-center gap-1 sm:gap-2" aria-label="Main Navigation">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -54,7 +61,7 @@ export default function Navbar({ activeTab, setActiveTab, pipelineCount = 0, con
                   }`}
                 >
                   <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-indigo-400' : 'text-slate-500'}`} />
-                  <span>{item.label}</span>
+                  <span className="hidden sm:inline">{item.label}</span>
 
                   {/* Badge */}
                   {item.count !== undefined && item.count > 0 && (
@@ -69,6 +76,20 @@ export default function Navbar({ activeTab, setActiveTab, pipelineCount = 0, con
                 </button>
               );
             })}
+
+            {/* Gemini Pro Intelligence Button */}
+            <button
+              onClick={onOpenGeminiModal}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                hasGeminiKey
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20'
+                  : 'bg-[#151720] border-[#272a38] text-slate-300 hover:text-white hover:border-indigo-500/50'
+              }`}
+              title="Configure Gemini Pro AI Intelligence"
+            >
+              <Sparkles className={`w-3.5 h-3.5 ${hasGeminiKey ? 'text-emerald-400' : 'text-indigo-400'}`} />
+              <span className="hidden md:inline">{hasGeminiKey ? 'Gemini Active' : 'Gemini AI'}</span>
+            </button>
           </nav>
 
         </div>

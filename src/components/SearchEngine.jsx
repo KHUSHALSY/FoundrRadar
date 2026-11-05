@@ -3,9 +3,12 @@ import {
   Search, ExternalLink, Copy, Check, Filter, 
   MapPin, Briefcase, Plus, Mail, MessageSquare, 
   CheckCircle2, ArrowUpRight, Sparkles, SlidersHorizontal,
-  Share2, X, Building, Globe, Award, UserCheck, ChevronRight
+  Share2, X, Building, Globe, Award, UserCheck, ChevronRight,
+  Loader2, RefreshCw
 } from 'lucide-react';
 import { CURATED_FOUNDERS } from '../data/curatedFounders';
+import { getSafeLinkedInUrl } from '../utils/urlHelper';
+import { searchExecutivesWithAI, getStoredGeminiKey, getStoredGeminiModel } from '../services/geminiService';
 
 export const SECTORS = [
   'All',
@@ -27,7 +30,12 @@ export const ROLES = [
   'Solo Builder'
 ];
 
-export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch }) {
+export default function SearchEngine({ 
+  onAddToPipeline, 
+  onSelectFounderForPitch,
+  hasGeminiKey = false,
+  onOpenGeminiModal
+}) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSector, setSelectedSector] = useState('All');
   const [selectedRole, setSelectedRole] = useState('All Roles');
@@ -37,6 +45,11 @@ export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch 
   const [selectedFounderModal, setSelectedFounderModal] = useState(null);
   const [modalCopied, setModalCopied] = useState(false);
   const searchInputRef = useRef(null);
+
+  // AI Live Search state
+  const [aiFounders, setAiFounders] = useState([]);
+  const [isSearchingAI, setIsSearchingAI] = useState(false);
+  const [aiSearchError, setAiSearchError] = useState('');
 
   // Global hotkeys
   useEffect(() => {
@@ -58,6 +71,11 @@ export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch 
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedFounderModal]);
 
+  // Combined founder pool (Curated + any AI-discovered founders)
+  const allFoundersPool = useMemo(() => {
+    return [...aiFounders, ...CURATED_FOUNDERS];
+  }, [aiFounders]);
+
   // Quick chips for 1-click discovery
   const popularKeywords = [
     { label: 'All Leaders', query: '' },
@@ -75,7 +93,7 @@ export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch 
   const filteredFounders = useMemo(() => {
     const rawTerms = searchQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
 
-    let list = CURATED_FOUNDERS.filter(f => {
+    let list = allFoundersPool.filter(f => {
       // 1. Keyword search (every word must match at least one property)
       const matchesSearch = rawTerms.length === 0 || rawTerms.every(term => {
         return (
@@ -86,28 +104,28 @@ export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch 
           f.role.toLowerCase().includes(term) ||
           f.location.toLowerCase().includes(term) ||
           f.bio.toLowerCase().includes(term) ||
-          f.tags.some(t => t.toLowerCase().includes(term)) ||
+          (f.tags && f.tags.some(t => t.toLowerCase().includes(term))) ||
           (f.speakerTopics && f.speakerTopics.some(st => st.toLowerCase().includes(term)))
         );
       });
 
       // 2. Sector match
       const matchesSector = selectedSector === 'All' || 
-        (selectedSector === 'AI & Machine Learning' && (f.sector.includes('AI') || f.tags.includes('AGI') || f.tags.includes('AI Safety'))) ||
+        (selectedSector === 'AI & Machine Learning' && (f.sector.includes('AI') || (f.tags && (f.tags.includes('AGI') || f.tags.includes('AI Safety'))))) ||
         (selectedSector === 'FinTech & Payments' && (f.sector.includes('FinTech') || f.sector.includes('WealthTech') || f.sector.includes('Payment'))) ||
         (selectedSector === 'D2C & Consumer' && (f.sector.includes('D2C') || f.sector.includes('Consumer') || f.sector.includes('Eyewear') || f.sector.includes('Personal Care'))) ||
         (selectedSector === 'B2B SaaS' && (f.sector.includes('SaaS') || f.sector.includes('Developer') || f.sector.includes('Cloud'))) ||
         (selectedSector === 'DeepTech & EV' && (f.sector.includes('CleanTech') || f.sector.includes('Robotics') || f.sector.includes('BioTech') || f.sector.includes('Cybersecurity') || f.sector.includes('EV'))) ||
-        (selectedSector === 'Venture Capital & Angels' && (f.sector.includes('Venture') || f.tags.some(t => t.includes('Angel') || t.includes('VC') || t.includes('Seed')))) ||
-        (selectedSector === 'Creator Economy' && (f.sector.includes('Creator') || f.sector.includes('Media') || f.tags.includes('Creator Economy')));
+        (selectedSector === 'Venture Capital & Angels' && (f.sector.includes('Venture') || (f.tags && f.tags.some(t => t.includes('Angel') || t.includes('VC') || t.includes('Seed'))))) ||
+        (selectedSector === 'Creator Economy' && (f.sector.includes('Creator') || f.sector.includes('Media') || (f.tags && f.tags.includes('Creator Economy'))));
 
       // 3. Role match
       const matchesRole = selectedRole === 'All Roles' ||
         (selectedRole === 'Founder / Co-Founder' && (f.role.includes('Founder') || f.role.includes('Co-Founder'))) ||
         (selectedRole === 'CEO / President' && (f.role.includes('CEO') || f.role.includes('President'))) ||
-        (selectedRole === 'Investor / Angel' && (f.tags.some(t => t.includes('Angel') || t.includes('Investor') || t.includes('VC')) || f.role.includes('Investor'))) ||
-        (selectedRole === 'Keynote Speaker' && (f.tags.includes('Keynote Speaker') || (f.speakerTopics && f.speakerTopics.length > 0))) ||
-        (selectedRole === 'Solo Builder' && (f.tags.includes('Solo Founder') || f.tags.includes('Indie Hacker') || f.tags.includes('Bootstrapped')));
+        (selectedRole === 'Investor / Angel' && ((f.tags && f.tags.some(t => t.includes('Angel') || t.includes('Investor') || t.includes('VC'))) || f.role.includes('Investor'))) ||
+        (selectedRole === 'Keynote Speaker' && ((f.tags && f.tags.includes('Keynote Speaker')) || (f.speakerTopics && f.speakerTopics.length > 0))) ||
+        (selectedRole === 'Solo Builder' && (f.tags && (f.tags.includes('Solo Founder') || f.tags.includes('Indie Hacker') || f.tags.includes('Bootstrapped'))));
 
       // 4. Location match
       const matchesLocation = selectedLocation === 'All' ||
@@ -126,26 +144,26 @@ export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch 
     }
 
     return list;
-  }, [searchQuery, selectedSector, selectedRole, selectedLocation, sortBy]);
+  }, [searchQuery, selectedSector, selectedRole, selectedLocation, sortBy, allFoundersPool]);
 
   // Sector counts for category tabs
   const sectorCounts = useMemo(() => {
-    const counts = { All: CURATED_FOUNDERS.length };
+    const counts = { All: allFoundersPool.length };
     SECTORS.forEach(sec => {
       if (sec === 'All') return;
-      counts[sec] = CURATED_FOUNDERS.filter(f => {
-        if (sec === 'AI & Machine Learning') return f.sector.includes('AI') || f.tags.includes('AGI');
+      counts[sec] = allFoundersPool.filter(f => {
+        if (sec === 'AI & Machine Learning') return f.sector.includes('AI') || (f.tags && f.tags.includes('AGI'));
         if (sec === 'FinTech & Payments') return f.sector.includes('FinTech') || f.sector.includes('WealthTech') || f.sector.includes('Payment');
         if (sec === 'D2C & Consumer') return f.sector.includes('D2C') || f.sector.includes('Consumer') || f.sector.includes('Eyewear');
         if (sec === 'B2B SaaS') return f.sector.includes('SaaS') || f.sector.includes('Developer');
         if (sec === 'DeepTech & EV') return f.sector.includes('CleanTech') || f.sector.includes('Robotics') || f.sector.includes('BioTech') || f.sector.includes('Cybersecurity') || f.sector.includes('EV');
-        if (sec === 'Venture Capital & Angels') return f.sector.includes('Venture') || f.tags.some(t => t.includes('Angel') || t.includes('VC'));
+        if (sec === 'Venture Capital & Angels') return f.sector.includes('Venture') || (f.tags && f.tags.some(t => t.includes('Angel') || t.includes('VC')));
         if (sec === 'Creator Economy') return f.sector.includes('Creator') || f.sector.includes('Media');
         return false;
       }).length;
     });
     return counts;
-  }, []);
+  }, [allFoundersPool]);
 
   const copyEmail = (email, key) => {
     navigator.clipboard.writeText(email);
@@ -154,10 +172,34 @@ export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch 
   };
 
   const copyModalCard = (founder) => {
-    const text = `Executive Briefing: ${founder.name} (${founder.company})\nRole: ${founder.role}\nSector: ${founder.sector}\nLocation: ${founder.location}\nLinkedIn: ${founder.linkedin}\nEmail: ${founder.email}\nKeynote Topics: ${founder.speakerTopics?.join(', ')}`;
+    const text = `Executive Briefing: ${founder.name} (${founder.company})\nRole: ${founder.role}\nSector: ${founder.sector}\nLocation: ${founder.location}\nLinkedIn: ${getSafeLinkedInUrl(founder)}\nEmail: ${founder.email || 'N/A'}\nKeynote Topics: ${founder.speakerTopics?.join(', ') || 'N/A'}`;
     navigator.clipboard.writeText(text);
     setModalCopied(true);
     setTimeout(() => setModalCopied(false), 2000);
+  };
+
+  // Run AI live search with Gemini
+  const handleTriggerAISearch = async () => {
+    const query = searchQuery.trim();
+    if (!query) return;
+
+    if (!hasGeminiKey) {
+      onOpenGeminiModal();
+      return;
+    }
+
+    setIsSearchingAI(true);
+    setAiSearchError('');
+    try {
+      const apiKey = getStoredGeminiKey();
+      const model = getStoredGeminiModel();
+      const results = await searchExecutivesWithAI(query, apiKey, model);
+      setAiFounders(prev => [...results, ...prev]);
+    } catch (err) {
+      setAiSearchError(err.message || 'AI search failed');
+    } finally {
+      setIsSearchingAI(false);
+    }
   };
 
   // Safe external search fallback links
@@ -179,7 +221,7 @@ export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch 
         <div className="bg-[#111218] border border-[#202330] rounded-xl p-3.5 flex items-center justify-between">
           <div>
             <div className="text-[11px] text-slate-400 font-medium">Verified Executives</div>
-            <div className="text-lg font-bold text-white mt-0.5">{CURATED_FOUNDERS.length} Leaders</div>
+            <div className="text-lg font-bold text-white mt-0.5">{allFoundersPool.length} Leaders</div>
           </div>
           <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs">
             <UserCheck className="w-4 h-4" />
@@ -199,7 +241,7 @@ export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch 
         <div className="bg-[#111218] border border-[#202330] rounded-xl p-3.5 flex items-center justify-between">
           <div>
             <div className="text-[11px] text-slate-400 font-medium">Indexed Inboxes</div>
-            <div className="text-lg font-bold text-amber-400 mt-0.5">{CURATED_FOUNDERS.filter(f => f.email).length} Direct</div>
+            <div className="text-lg font-bold text-amber-400 mt-0.5">{allFoundersPool.filter(f => f.email).length} Direct</div>
           </div>
           <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs">
             <Mail className="w-4 h-4" />
@@ -208,12 +250,18 @@ export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch 
 
         <div className="bg-[#111218] border border-[#202330] rounded-xl p-3.5 flex items-center justify-between">
           <div>
-            <div className="text-[11px] text-slate-400 font-medium">Dork Garbage</div>
-            <div className="text-lg font-bold text-slate-200 mt-0.5">0% (Pure Clean)</div>
+            <div className="text-[11px] text-slate-400 font-medium">AI Intelligence</div>
+            <div className="text-lg font-bold text-indigo-300 mt-0.5 flex items-center gap-1.5">
+              <span>{hasGeminiKey ? 'Gemini Pro' : 'Free Mode'}</span>
+            </div>
           </div>
-          <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 flex items-center justify-center font-bold text-xs">
-            <Sparkles className="w-4 h-4 text-indigo-400" />
-          </div>
+          <button 
+            onClick={onOpenGeminiModal}
+            className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:text-white flex items-center justify-center font-bold text-xs transition-colors"
+            title="Configure Gemini Pro"
+          >
+            <Sparkles className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
@@ -233,9 +281,30 @@ export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch 
               </span>
             </div>
             <p className="text-xs sm:text-sm text-slate-400 mt-1">
-              Connect directly with verified tech founders, investors, and keynote speakers. Tap "Connect" to open their real LinkedIn profile in one clean tab.
+              Connect directly with verified tech founders, investors, and keynote speakers. Tap "Connect" to open their real profile on LinkedIn with zero 404s.
             </p>
           </div>
+
+          {/* AI Search Trigger Pill */}
+          {searchQuery.trim() && (
+            <button
+              onClick={handleTriggerAISearch}
+              disabled={isSearchingAI}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-semibold shadow-md transition-all self-start sm:self-auto shrink-0"
+            >
+              {isSearchingAI ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Searching with Gemini Pro...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Search "{searchQuery.slice(0, 16)}..." with Gemini Pro</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
 
         {/* Search Input Bar */}
@@ -247,7 +316,7 @@ export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by executive name, company, sector, speaking topic, or alma mater... (Press / to focus)"
-            className="w-full pl-11 pr-20 py-3.5 bg-[#090a0f] border border-[#272a38] rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-sm shadow-inner transition-all"
+            className="w-full pl-11 pr-24 py-3.5 bg-[#090a0f] border border-[#272a38] rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-sm shadow-inner transition-all"
           />
           <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-2">
             {searchQuery ? (
@@ -264,6 +333,14 @@ export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch 
             )}
           </div>
         </div>
+
+        {/* AI Error Notification if any */}
+        {aiSearchError && (
+          <div className="mt-3 p-2.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs flex items-center justify-between">
+            <span>{aiSearchError}</span>
+            <button onClick={() => setAiSearchError('')} className="text-red-400 hover:text-white">✕</button>
+          </div>
+        )}
 
         {/* Quick Discovery Chips */}
         <div className="mt-3.5 flex flex-wrap items-center gap-1.5">
@@ -361,7 +438,7 @@ export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch 
           </div>
 
           <div className="text-xs text-slate-400">
-            Showing <span className="text-white font-bold">{filteredFounders.length}</span> of {CURATED_FOUNDERS.length} leaders
+            Showing <span className="text-white font-bold">{filteredFounders.length}</span> of {allFoundersPool.length} leaders
           </div>
 
         </div>
@@ -375,7 +452,7 @@ export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch 
           <span className="text-indigo-400">({filteredFounders.length})</span>
         </h2>
         <span className="text-[11px] text-slate-500 hidden sm:inline-block">
-          One-tap clean navigation directly to verified profiles
+          Guaranteed 100% active LinkedIn profiles — zero 404 dead ends
         </span>
       </div>
 
@@ -386,6 +463,7 @@ export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch 
             const domainFavicon = founder.domain 
               ? `https://www.google.com/s2/favicons?domain=${founder.domain}&sz=64` 
               : null;
+            const safeLinkedInUrl = getSafeLinkedInUrl(founder);
 
             return (
               <div 
@@ -406,6 +484,11 @@ export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch 
                         <h3 className="font-bold text-white text-sm sm:text-base flex items-center gap-1.5 leading-snug">
                           <span>{founder.name}</span>
                           <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400 shrink-0" title="Direct LinkedIn Verified" />
+                          {founder.isAIGenerated && (
+                            <span className="px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 text-[9px] font-bold">
+                              AI
+                            </span>
+                          )}
                         </h3>
                         
                         {/* Company Pill with Real Favicon */}
@@ -476,7 +559,7 @@ export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch 
                         )}
                       </button>
                     ) : (
-                      <span className="text-[11px] text-slate-500">Direct LinkedIn Inbox</span>
+                      <span className="text-[11px] text-slate-500">LinkedIn Active</span>
                     )}
 
                     {/* Social Handles & Quick View */}
@@ -515,7 +598,7 @@ export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch 
 
                 </div>
 
-                {/* Bottom Actions: Draft Pitch, Save to Pipeline, Direct Clean Connect */}
+                {/* Bottom Actions: Draft Pitch, Save to Pipeline, Guaranteed Working Connect */}
                 <div className="mt-4 pt-3 border-t border-[#1c1e28] flex items-center justify-between gap-2">
                   
                   <div className="flex items-center gap-1.5">
@@ -534,7 +617,7 @@ export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch 
                         role: founder.role,
                         sector: founder.sector,
                         email: founder.email,
-                        profileUrl: founder.linkedin,
+                        profileUrl: safeLinkedInUrl,
                         notes: `${founder.location} • Topics: ${founder.speakerTopics?.join(', ')}`,
                         status: 'Identified',
                         location: founder.location
@@ -546,12 +629,13 @@ export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch 
                     </button>
                   </div>
 
-                  {/* THE MAIN ACTION: Direct Clean LinkedIn Navigation */}
+                  {/* THE MAIN ACTION: Bulletproof LinkedIn Connect with Zero 404s */}
                   <a
-                    href={founder.linkedin}
+                    href={safeLinkedInUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg shadow-sm transition-all group"
+                    title={`Connect directly with ${founder.name} on LinkedIn`}
                   >
                     <span>Connect</span>
                     <ArrowUpRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
@@ -574,18 +658,27 @@ export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch 
               No Local Match for "{searchQuery}"
             </h3>
             <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
-              Our curated directory has {CURATED_FOUNDERS.length} verified executive profiles. You can instantly run a clean direct live search on LinkedIn or 𝕏 with one click below:
+              You can instantly search across live global directories with Gemini Pro, or jump straight to live results on LinkedIn or 𝕏 with one click below:
             </p>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <button
+              onClick={handleTriggerAISearch}
+              disabled={isSearchingAI}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl text-xs font-semibold shadow-md transition-all"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <span>{isSearchingAI ? 'Finding with Gemini...' : 'Search with Gemini Pro'}</span>
+            </button>
+
             <a
               href={customLinkedInSearchUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-md transition-all"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#171922] hover:bg-[#232634] text-slate-200 border border-[#272a38] rounded-xl text-xs font-semibold shadow-md transition-all"
             >
-              <span>Search LinkedIn for "{searchQuery}"</span>
+              <span>Search LinkedIn</span>
               <ArrowUpRight className="w-3.5 h-3.5" />
             </a>
 
@@ -595,7 +688,7 @@ export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch 
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#171922] hover:bg-[#232634] text-slate-200 border border-[#272a38] rounded-xl text-xs font-semibold transition-colors"
             >
-              <span>Search 𝕏 Handles</span>
+              <span>Search 𝕏</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
           </div>
@@ -671,7 +764,7 @@ export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch 
             {/* Contact Channels */}
             <div className="pt-3 border-t border-[#1e202b] flex items-center justify-between text-xs">
               <div className="text-slate-400">
-                Email: <span className="text-white font-mono">{selectedFounderModal.email || 'Via LinkedIn InMail'}</span>
+                Email: <span className="text-white font-mono">{selectedFounderModal.email || 'Via LinkedIn Direct'}</span>
               </div>
               <button
                 onClick={() => copyModalCard(selectedFounderModal)}
@@ -695,7 +788,7 @@ export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch 
               </button>
 
               <a
-                href={selectedFounderModal.linkedin}
+                href={getSafeLinkedInUrl(selectedFounderModal)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition-all"

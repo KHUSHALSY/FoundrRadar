@@ -212,23 +212,25 @@ export default function PipelineCRM({
               <tbody className="divide-y divide-[#1c1e28]">
                 {filteredItems.map((item) => {
                   const currentStatus = PIPELINE_STATUSES.find(s => s.id === item.status) || PIPELINE_STATUSES[0];
+                  const safeLinkedIn = (item.profileUrl && item.profileUrl.includes('/search/results/people/'))
+                    ? item.profileUrl
+                    : `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent((item.name + ' ' + (item.company || '')).trim())}`;
+
                   return (
                     <tr key={item.id} className="hover:bg-[#151720]">
                       {/* Name & Company */}
                       <td className="py-3 px-4">
                         <div className="font-semibold text-white flex items-center gap-1.5">
                           <span>{item.name}</span>
-                          {item.profileUrl && item.profileUrl !== '#' && (
-                            <a 
-                              href={item.profileUrl} 
-                              target="_blank" 
-                              rel="noreferrer" 
-                              className="text-indigo-400 hover:underline"
-                              title="Open LinkedIn"
-                            >
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
-                          )}
+                          <a 
+                            href={safeLinkedIn} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-indigo-400 hover:text-indigo-300"
+                            title={`Search & Connect with ${item.name} on LinkedIn`}
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
                         </div>
                         <div className="text-slate-400 text-[11px] mt-0.5">{item.company} • {item.role}</div>
                       </td>

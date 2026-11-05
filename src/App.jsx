@@ -4,7 +4,8 @@ import SearchEngine from './components/SearchEngine';
 import PipelineCRM from './components/PipelineCRM';
 import PitchGenerator from './components/PitchGenerator';
 import Playbook from './components/Playbook';
-import { Sparkles, Share2 } from 'lucide-react';
+import GeminiModal from './components/GeminiModal';
+import { getStoredGeminiKey } from './services/geminiService';
 
 const STORAGE_KEY = 'founderradar_pro_pipeline_v2';
 
@@ -18,7 +19,7 @@ const INITIAL_PIPELINE = [
     location: 'Bengaluru, India',
     email: 'kunal@cred.club',
     status: 'Call Scheduled',
-    profileUrl: 'https://www.linkedin.com/in/kunalshah1/',
+    profileUrl: 'https://www.linkedin.com/search/results/people/?keywords=Kunal%20Shah%20CRED',
     notes: 'Keynote discussion on Delta 4 framework. Meeting with Chief of Staff booked.'
   },
   {
@@ -30,20 +31,20 @@ const INITIAL_PIPELINE = [
     location: 'New Delhi, India',
     email: 'aman@boat-lifestyle.com',
     status: 'Contacted (LinkedIn)',
-    profileUrl: 'https://www.linkedin.com/in/amangupta1/',
+    profileUrl: 'https://www.linkedin.com/search/results/people/?keywords=Aman%20Gupta%20boAt',
     notes: 'Sent personalized connect note. Reached out regarding annual growth fireside chat.'
   },
   {
     id: 'f-saas-1',
-    name: 'Sanjeev Bikhchandani',
-    company: 'Info Edge',
-    role: 'Founder & Vice Chairman',
-    sector: 'B2B SaaS / Venture Capital',
-    location: 'Delhi NCR, India',
-    email: 'sanjeev@infoedge.com',
+    name: 'Deepinder Goyal',
+    company: 'Zomato',
+    role: 'Founder & CEO',
+    sector: 'Consumer Tech / Quick Commerce',
+    location: 'Gurugram, India',
+    email: 'deepinder@zomato.com',
     status: 'Confirmed',
-    profileUrl: 'https://www.linkedin.com/in/sanjeev-bikhchandani-4279581/',
-    notes: 'Confirmed 35-min keynote address. VIP travel logistics aligned.'
+    profileUrl: 'https://www.linkedin.com/search/results/people/?keywords=Deepinder%20Goyal%20Zomato',
+    notes: 'Confirmed 35-min keynote address on hyperlocal delivery network economics.'
   }
 ];
 
@@ -60,6 +61,8 @@ export default function App() {
 
   const [selectedFounderForPitch, setSelectedFounderForPitch] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
+  const [isGeminiModalOpen, setIsGeminiModalOpen] = useState(false);
+  const [hasGeminiKey, setHasGeminiKey] = useState(() => !!getStoredGeminiKey());
 
   useEffect(() => {
     try {
@@ -133,6 +136,8 @@ export default function App() {
         setActiveTab={setActiveTab}
         pipelineCount={pipeline.length}
         confirmedCount={confirmedCount}
+        hasGeminiKey={hasGeminiKey}
+        onOpenGeminiModal={() => setIsGeminiModalOpen(true)}
       />
 
       {/* Main Content View */}
@@ -140,7 +145,9 @@ export default function App() {
         {activeTab === 'search' && (
           <SearchEngine 
             onAddToPipeline={handleAddToPipeline} 
-            onSelectFounderForPitch={handleSelectFounderForPitch} 
+            onSelectFounderForPitch={handleSelectFounderForPitch}
+            hasGeminiKey={hasGeminiKey}
+            onOpenGeminiModal={() => setIsGeminiModalOpen(true)}
           />
         )}
 
@@ -159,6 +166,8 @@ export default function App() {
           <PitchGenerator 
             selectedFounder={selectedFounderForPitch} 
             pipeline={pipeline}
+            hasGeminiKey={hasGeminiKey}
+            onOpenGeminiModal={() => setIsGeminiModalOpen(true)}
           />
         )}
 
@@ -166,6 +175,16 @@ export default function App() {
           <Playbook />
         )}
       </main>
+
+      {/* Gemini Pro Setup Modal */}
+      <GeminiModal 
+        isOpen={isGeminiModalOpen}
+        onClose={() => setIsGeminiModalOpen(false)}
+        onKeyUpdated={(active) => {
+          setHasGeminiKey(active);
+          showToast(active ? 'Gemini Pro connected!' : 'Gemini disconnected');
+        }}
+      />
 
       {/* Minimal Footer */}
       <footer className="mt-auto border-t border-[#1a1c26] py-6 px-4 sm:px-6 text-xs text-slate-500">
@@ -176,6 +195,13 @@ export default function App() {
             <span>Open-source executive outreach intelligence</span>
           </div>
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => setIsGeminiModalOpen(true)}
+              className="text-slate-400 hover:text-indigo-400 flex items-center gap-1"
+            >
+              <span>{hasGeminiKey ? 'Gemini Pro: Connected' : 'Configure Gemini API'}</span>
+            </button>
+            <span>•</span>
             <a 
               href="https://github.com/KHUSHALSY/FoundrRadar" 
               target="_blank" 
