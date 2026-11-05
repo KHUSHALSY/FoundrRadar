@@ -1,4 +1,21 @@
 export const CURATED_FOUNDERS = [
+  // --- Cybersecurity & Infrastructure ---
+  {
+    id: "f-sec-1",
+    name: "Moxie Marlinspike",
+    company: "Signal",
+    role: "Founder & Cryptographer",
+    sector: "Cybersecurity & Encrypted Tech",
+    location: "San Francisco, CA",
+    email: "moxie@signal.org",
+    linkedin: "https://www.linkedin.com/in/moxiemarlinspike/",
+    twitter: "https://x.com/moxie",
+    reddit: "https://www.reddit.com/r/signal",
+    bio: "Cryptographer and creator of Signal protocol powering end-to-end encryption for billions of devices worldwide.",
+    tags: ["Signal Protocol", "Cybersecurity", "Cryptographer", "Privacy"],
+    speakerTopics: ["End-to-End Cryptographic Protocols", "Privacy Engineering", "Decentralization Realities"]
+  },
+
   // --- BioTech & HealthTech ---
   {
     id: "f-bio-1",
