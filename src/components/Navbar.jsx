@@ -33,7 +33,7 @@ export default function Navbar({ activeTab, setActiveTab, pipelineCount = 0, con
                 FounderRadar
               </span>
               <span className="text-[10px] font-semibold px-1.5 py-0.2 bg-[#171922] text-slate-400 border border-[#232634] rounded">
-                v1.0
+                v1.1
               </span>
             </div>
           </div>
