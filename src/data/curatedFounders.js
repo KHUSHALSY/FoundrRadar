@@ -1,4 +1,21 @@
 export const CURATED_FOUNDERS = [
+  // --- Developer Infrastructure & Open Source ---
+  {
+    id: "f-dev-1",
+    name: "Mitchell Hashimoto",
+    company: "HashiCorp / Ghostty",
+    role: "Founder & Creator",
+    sector: "Developer Tools & Open Source",
+    location: "Seattle, WA / San Francisco",
+    email: "mitchell@hashicorp.com",
+    linkedin: "https://www.linkedin.com/in/mitchellh/",
+    twitter: "https://x.com/mitchellh",
+    reddit: "https://www.reddit.com/r/devops",
+    bio: "Creator of Terraform, Vagrant, Consul, and Vault. Built HashiCorp into a multi-billion dollar public cloud infrastructure company.",
+    tags: ["Open Source Legend", "Terraform", "Cloud Infra", "DevTools"],
+    speakerTopics: ["Commercializing Open Source", "Pragmatic Systems Engineering", "Developer Experience"]
+  },
+
   // --- ClimateTech, Robotics & DeepTech ---
   {
     id: "f-deep-1",
