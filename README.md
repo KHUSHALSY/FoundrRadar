@@ -3,6 +3,7 @@
 # 🧭 FounderRadar Pro
 ### The Universal Multi-Platform Executive Outreach & Intelligence Engine
 
+[![Version: 1.1.0](https://img.shields.io/badge/version-1.1.0-indigo.svg)](https://github.com/KHUSHALSY/FoundrRadar/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![React 19](https://img.shields.io/badge/React-19.0-61dafb.svg)](https://react.dev)
 [![Vite 8](https://img.shields.io/badge/Vite-8.0-646cff.svg)](https://vitejs.dev)
