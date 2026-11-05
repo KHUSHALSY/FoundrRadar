@@ -36,6 +36,10 @@ export default function SearchEngine({ onAddToPipeline, onSelectFounderForPitch 
 
   React.useEffect(() => {
     const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setSearchQuery('');
+        searchInputRef.current?.blur();
+      }
       if (e.key === '/' && document.activeElement !== searchInputRef.current && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
         e.preventDefault();
         searchInputRef.current?.focus();
